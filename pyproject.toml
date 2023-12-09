@@ -19,6 +19,7 @@ classifiers = [
 ]
 dependencies = [
     "allianceauth>=3.8.0",
+    "django-solo>=2.0.1"
 ]
 
 [project.urls]

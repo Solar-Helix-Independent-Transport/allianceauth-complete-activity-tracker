@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "allianceauth-complete-activity-tracker"
+dynamic = ["version"]
+description = "Alliance Auth Plugin"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "ak", email = "ak@ak.auth" },
+]
+classifiers = [
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "allianceauth>=3.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Solar-Helix-Independent-Transport/allianceauth-complete-activity-tracker"
+
+[tool.hatch.version]
+path = "aacat/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/aacat",
+]

@@ -1,0 +1,5 @@
+include LICENSE
+include README.md
+recursive-include aacat/templates *
+recursive-include aacat/static *
+recursive-include aacat/ *.py

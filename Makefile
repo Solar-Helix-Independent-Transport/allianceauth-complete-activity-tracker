@@ -20,7 +20,6 @@ dev:
 	pip install wheel -U
 	pip install tox -U
 	pip install hatch -U
-	pip install -e .
 
 test:
 	tox

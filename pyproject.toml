@@ -33,3 +33,6 @@ path = "aacat/__init__.py"
 include = [
     "/aacat",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ascat"]

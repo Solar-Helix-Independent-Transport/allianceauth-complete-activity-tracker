@@ -35,4 +35,4 @@ include = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["ascat"]
+packages = ["aacat"]

@@ -21,9 +21,6 @@ class FleetTracking(MenuItemHook):
 def register_menu():
     return FleetTracking()
 
-@hooks.register('url_hook')
-def register_url():
-    return UrlHook(urls, 'aacat', r'^cat/')
 
 @hooks.register("secure_group_filters")
 def filters():
@@ -32,4 +29,11 @@ def filters():
 @hooks.register('discord_cogs_hook')
 def register_cogs():
     return "cog.file.name"
+
+
 """
+
+
+@hooks.register('url_hook')
+def register_url():
+    return UrlHook(urls, 'aacat', r'^cat/')

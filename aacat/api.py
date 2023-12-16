@@ -122,7 +122,7 @@ def post_track_character(request, character_id: int):
 def post_restart_fleet_tasks(request, fleet_id: int):
     if not request.user.has_perm('aacat.create_fleets'):
         return 403, "No Perms"
-    fleet = models.Fleet.objects.get(fleet_id=fleet_id)
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
     snapshot_fleet.apply_async(
         args=[fleet.boss.character_id, fleet.eve_fleet_id], priority=1)
     return 200, fleet.eve_fleet_id

@@ -152,13 +152,12 @@ def snapshot_fleet(self, character_id, fleet_id):
                                              # highly threaded we need a delay to finish this task...
                                              countdown=1,
                                              priority=1)
-    except (HTTPBadGateway, HTTPGatewayTimeout, HTTPServiceUnavailable, OSError) as e:
-        logger.error(e)
-        self.retry()
     except HTTPNotFound as e:
         logger.error(e)
         # TODO do we want to retry this a few times?
         # are we not the boss any more? did we DC? i cant think of more ATM...
-
         fleet.end_time = timezone.now()
         fleet.save()
+    except (HTTPBadGateway, HTTPGatewayTimeout, HTTPServiceUnavailable, OSError) as e:
+        logger.error(e)
+        self.retry()

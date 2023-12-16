@@ -87,7 +87,7 @@ def check_character_fleet(self, character_id):
 def bootstrap_snapshot_fleet(self, character_id, fleet_id):
     snapshot_fleet.apply_async(args=[character_id,
                                      fleet_id],
-                               countdown=10,
+                               countdown=9,
                                priority=1)
     logger.info(f"Sent Task for fleet {fleet_id}, {character_id}")
 
@@ -149,7 +149,8 @@ def snapshot_fleet(self, character_id, fleet_id):
         fleet.save()
         bootstrap_snapshot_fleet.apply_async(args=[character_id,
                                                    fleet_id],
-                                             countdown=0,
+                                             # highly threaded we need a delay to finish this task...
+                                             countdown=1,
                                              priority=1)
     except (HTTPBadGateway, HTTPGatewayTimeout, HTTPServiceUnavailable, OSError) as e:
         logger.error(e)

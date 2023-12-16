@@ -59,26 +59,28 @@ def check_character_fleet(self, character_id):
     try:
         fleet_details = providers.esi.client.Fleets.get_characters_character_id_fleet(character_id=character_id,
                                                                                       token=token.valid_access_token()).result()
-        if fleet_details.get('role', "") == "fleet_commander":
-            logger.info(f"I'm fleet boss! of {fleet_details.get('fleet_id')}")
+        logger.info(
+            f"{token.character_name} in the the fleet {fleet_details.get('fleet_id')}")
 
-            char = EveCharacter.objects.get(character_id=character_id)
-            fleet = Fleet.objects.get_or_create(boss=char,
-                                                eve_fleet_id=fleet_details.get(
-                                                    'fleet_id'),
-                                                defaults={'start_time': timezone.now(),
-                                                          "name": f"{char}'s Fleet"})
+        fleet_characters = providers.esi.client.Fleets.get_fleets_fleet_id_members(fleet_id=fleet_details.get('fleet_id'),
+                                                                                   token=token.valid_access_token()).result()
 
-            snapshot_fleet.apply_async(args=[character_id,
-                                       fleet_details.get('fleet_id')],
-                                       priority=3)
-        else:
-            logger.warning(
-                f"I'm not fleet boss! of {fleet_details.get('fleet_id')}")
-            logger.warning(f"however `someone` is the boss")
+        logger.info(
+            f"{token.character_name} the boss of the fleet {fleet_details.get('fleet_id')}")
+
+        char = EveCharacter.objects.get(character_id=character_id)
+        fleet = Fleet.objects.get_or_create(boss=char,
+                                            eve_fleet_id=fleet_details.get(
+                                                'fleet_id'),
+                                            defaults={'start_time': timezone.now(),
+                                                      "name": f"{char}'s Fleet"})
+
+        snapshot_fleet.apply_async(args=[character_id,
+                                         fleet_details.get('fleet_id')],
+                                   priority=3)
     except Exception as e:
         logger.error(e, stack_info=True)
-        logger.error(f"I'm not in a fleet")
+        logger.error(f"I'm not in a fleet or i am not the boss.")
 
 
 @shared_task(bind=True)
@@ -89,7 +91,7 @@ def bootstrap_snapshot_fleet(self, character_id, fleet_id):
                                priority=1)
 
 
-@shared_task(bind=True, base=QueueOnce, max_retries=3)
+@shared_task(bind=True, base=QueueOnce, max_retries=8, retry_backoff=15)
 def snapshot_fleet(self, character_id, fleet_id):
     token = Token.get_token(character_id, ['esi-fleets.read_fleet.v1'])
     fleet = Fleet.objects.get(
@@ -150,7 +152,9 @@ def snapshot_fleet(self, character_id, fleet_id):
         logger.error(e)
         self.retry()
     except HTTPNotFound as e:
-        # logger.error(e)
+        logger.error(e)
         # TODO do we want to retry this a few times?
+        # are we not the boss any more? did we DC? i cant think of more ATM...
+
         fleet.end_time = timezone.now()
         fleet.save()

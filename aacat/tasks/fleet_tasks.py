@@ -89,6 +89,7 @@ def bootstrap_snapshot_fleet(self, character_id, fleet_id):
                                      fleet_id],
                                countdown=10,
                                priority=1)
+    logger.info(f"Sent Task for fleet {fleet_id}, {character_id}")
 
 
 @shared_task(bind=True, base=QueueOnce, max_retries=8, retry_backoff=15)
@@ -96,6 +97,8 @@ def snapshot_fleet(self, character_id, fleet_id):
     token = Token.get_token(character_id, ['esi-fleets.read_fleet.v1'])
     fleet = Fleet.objects.get(
         boss__character_id=character_id, eve_fleet_id=fleet_id)
+    logger.info(f"snap-shotting fleet {fleet_id}, {character_id}")
+
     try:
         fleet_characters = providers.esi.client.Fleets.get_fleets_fleet_id_members(fleet_id=fleet_id,
                                                                                    token=token.valid_access_token()).result()
@@ -140,7 +143,7 @@ def snapshot_fleet(self, character_id, fleet_id):
                 new_events.append(_evnt)
             except:
                 pass
-
+        logger.info(f"Creating DB Entries for {fleet_id}")
         FleetEvent.objects.bulk_create(new_events)
         fleet.events += 1
         fleet.save()

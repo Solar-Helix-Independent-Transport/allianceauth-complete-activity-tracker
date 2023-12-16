@@ -11,7 +11,7 @@ from django.utils import timezone
 from ninja import NinjaAPI
 from ninja.security import django_auth
 
-from aacat.tasks.fleet_tasks import check_character_online
+from aacat.tasks.fleet_tasks import check_character_online, snapshot_fleet
 
 from . import models, providers, schema
 
@@ -112,6 +112,20 @@ def post_track_character(request, character_id: int):
     check_character_online.apply_async(
         args=[character.character_id], priority=1)
     return 200, character
+
+
+@api.post(
+    "/fleets/restart/{fleet_id}",
+    response={200: str, 403: str},
+    tags=["Fleets"]
+)
+def post_restart_fleet_tasks(request, fleet_id: int):
+    if not request.user.has_perm('aacat.create_fleets'):
+        return 403, "No Perms"
+    fleet = models.Fleet.objects.get(fleet_id=fleet_id)
+    snapshot_fleet.apply_async(
+        args=[fleet.boss.character_id, fleet.eve_fleet_id], priority=1)
+    return 200, fleet.eve_fleet_id
 
 
 @api.get(

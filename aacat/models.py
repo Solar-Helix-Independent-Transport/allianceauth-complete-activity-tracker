@@ -57,7 +57,8 @@ class Fleet(models.Model):
 
     events = models.IntegerField(default=0)
     refresh_time = models.IntegerField(default=10)
-    fleet_type = models.ForeignKey(FleetType, on_delete=models.CASCADE)
+    fleet_type = models.ForeignKey(
+        FleetType, on_delete=models.SET_NULL, default=None, null=True, blank=True)
 
     name = models.CharField(max_length=200)
     after_action_report = models.TextField(blank=True, null=True)

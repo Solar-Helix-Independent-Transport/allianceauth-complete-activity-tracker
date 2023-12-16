@@ -1,6 +1,7 @@
 from __future__ import division
 
-from typing import Optional, Union
+from datetime import datetime
+from typing import List, Optional, Union
 
 from ninja import Schema
 
@@ -34,3 +35,17 @@ class EveName(Schema):
 class ValueLabel(Schema):
     value: Union[str, int, float, bool]
     label: str
+
+
+class SnapshotCharacter(Schema):
+    character: Character
+    main: Optional[Character] = None
+    system: EveName
+    ship: EveName
+    role: str
+    join_time: datetime
+
+
+class Snapshot(Schema):
+    time: datetime
+    snapshot: List[SnapshotCharacter]

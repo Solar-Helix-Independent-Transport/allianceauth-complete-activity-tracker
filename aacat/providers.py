@@ -47,11 +47,11 @@ class EVEClient(EsiClientProvider):
             "https://www.fuzzwork.co.uk/dump/latest/invGroups.csv")
 
         for r in group_data.data:
-            if r['categoryID'] == cat_id:
+            if int(r['categoryID']) == cat_id:
                 group_ids.add(r['groupID'])
                 groups.append(models.ShipCategory(
                     id=r['groupID'], name=r['groupName']))
-        # create anything new
+        # create anything new, ignore the existing stuff
         models.ShipCategory.objects.bulk_create(
             groups, batch_size=1000, ignore_conflicts=True)
         # update anything not
@@ -66,7 +66,7 @@ class EVEClient(EsiClientProvider):
             if r['groupID'] in group_ids:
                 ships.append(models.ShipType(
                     id=r['typeID'], name=r['typeName'], cat_id=r['groupID']))
-        # create anything new
+        # create anything new, ignore the existing stuff
         models.ShipType.objects.bulk_create(
             ships, batch_size=1000, ignore_conflicts=True)
         # update anything not

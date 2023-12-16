@@ -8,5 +8,5 @@ app_name = 'aacat'
 urlpatterns = [
     # url(r'^$', views., name='view'),
     re_path(r'^api/', api.urls),
-
+    re_path(r'^char/add/$', views.add_char, name='add_char'),
 ]

@@ -47,12 +47,14 @@ def check_character_online(self, character_id):
     if online_status.get('online', False):
         print(F"HEY!!!! I'm online! {token.character_name}")
         check_character_fleet.delay(character_id)
+    else:
+        print(F"OFFLINE! {token.character_name}")
 
 
 @shared_task(bind=True, base=QueueOnce, max_retries=3)
 def check_character_fleet(self, character_id):
     token = Token.get_token(character_id, ['esi-fleets.read_fleet.v1'])
-    print(F"HEY!!!! I'm online! {token.character_name} checking fleet")
+    print(F"{token.character_name} checking fleets")
 
     try:
         fleet_details = providers.esi.client.Fleets.get_characters_character_id_fleet(character_id=character_id,
@@ -64,8 +66,8 @@ def check_character_fleet(self, character_id):
             fleet = Fleet.objects.get_or_create(boss=char,
                                                 eve_fleet_id=fleet_details.get(
                                                     'fleet_id'),
-                                                fleet_type_id=1,
-                                                defaults={'start_time': timezone.now()})
+                                                defaults={'start_time': timezone.now(),
+                                                          "name": f"{char}'s Fleet"})
 
             snapshot_fleet.apply_async(args=[character_id,
                                        fleet_details.get('fleet_id')],
@@ -89,11 +91,11 @@ def bootstrap_snapshot_fleet(self, character_id, fleet_id):
 @shared_task(bind=True, base=QueueOnce, max_retries=3)
 def snapshot_fleet(self, character_id, fleet_id):
     token = Token.get_token(character_id, ['esi-fleets.read_fleet.v1'])
+    fleet = Fleet.objects.get(
+        boss__character_id=character_id, eve_fleet_id=fleet_id)
     try:
         fleet_characters = providers.esi.client.Fleets.get_fleets_fleet_id_members(fleet_id=fleet_id,
                                                                                    token=token.valid_access_token()).result()
-        fleet = Fleet.objects.get(
-            boss__character_id=character_id, eve_fleet_id=fleet_id)
         new_events = []
         types = []
         names = []
@@ -136,7 +138,7 @@ def snapshot_fleet(self, character_id, fleet_id):
             except:
                 pass
 
-        FleetEvent.objects.bulk_create(new_events, ignore_conflicts=True)
+        FleetEvent.objects.bulk_create(new_events)
         fleet.events += 1
         fleet.save()
         bootstrap_snapshot_fleet.apply_async(args=[character_id,
@@ -147,6 +149,7 @@ def snapshot_fleet(self, character_id, fleet_id):
         print(e)
         self.retry()
     except HTTPNotFound as e:
-        print(e)
+        # print(e)
+        # TODO do we want to retry this a few times?
         fleet.end_time = timezone.now()
         fleet.save()

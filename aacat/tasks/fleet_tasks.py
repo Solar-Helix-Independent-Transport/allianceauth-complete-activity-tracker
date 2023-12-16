@@ -45,22 +45,22 @@ def check_character_online(self, character_id):
     online_status = providers.esi.client.Location.get_characters_character_id_online(character_id=character_id,
                                                                                      token=token.valid_access_token()).result()
     if online_status.get('online', False):
-        print(F"HEY!!!! I'm online! {token.character_name}")
+        logger.info(F"HEY!!!! I'm online! {token.character_name}")
         check_character_fleet.delay(character_id)
     else:
-        print(F"OFFLINE! {token.character_name}")
+        logger.info(F"OFFLINE! {token.character_name}")
 
 
 @shared_task(bind=True, base=QueueOnce, max_retries=3)
 def check_character_fleet(self, character_id):
     token = Token.get_token(character_id, ['esi-fleets.read_fleet.v1'])
-    print(F"{token.character_name} checking fleets")
+    logger.info(F"{token.character_name} checking fleets")
 
     try:
         fleet_details = providers.esi.client.Fleets.get_characters_character_id_fleet(character_id=character_id,
                                                                                       token=token.valid_access_token()).result()
         if fleet_details.get('role', "") == "fleet_commander":
-            print(f"I'm fleet boss! of {fleet_details.get('fleet_id')}")
+            logger.info(f"I'm fleet boss! of {fleet_details.get('fleet_id')}")
 
             char = EveCharacter.objects.get(character_id=character_id)
             fleet = Fleet.objects.get_or_create(boss=char,
@@ -73,11 +73,12 @@ def check_character_fleet(self, character_id):
                                        fleet_details.get('fleet_id')],
                                        priority=3)
         else:
-            print(f"I'm not fleet boss! of {fleet_details.get('fleet_id')}")
-            print(f"however `someone` is the boss")
+            logger.warning(
+                f"I'm not fleet boss! of {fleet_details.get('fleet_id')}")
+            logger.warning(f"however `someone` is the boss")
     except Exception as e:
-        print(e)
-        print(f"I'm not in a fleet")
+        logger.error(e, stack_info=True)
+        logger.error(f"I'm not in a fleet")
 
 
 @shared_task(bind=True)
@@ -146,10 +147,10 @@ def snapshot_fleet(self, character_id, fleet_id):
                                              countdown=0,
                                              priority=1)
     except (HTTPBadGateway, HTTPGatewayTimeout, HTTPServiceUnavailable) as e:
-        print(e)
+        logger.error(e)
         self.retry()
     except HTTPNotFound as e:
-        # print(e)
+        # logger.error(e)
         # TODO do we want to retry this a few times?
         fleet.end_time = timezone.now()
         fleet.save()

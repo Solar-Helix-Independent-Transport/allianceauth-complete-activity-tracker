@@ -148,7 +148,7 @@ def snapshot_fleet(self, character_id, fleet_id):
                                                    fleet_id],
                                              countdown=0,
                                              priority=1)
-    except (HTTPBadGateway, HTTPGatewayTimeout, HTTPServiceUnavailable) as e:
+    except (HTTPBadGateway, HTTPGatewayTimeout, HTTPServiceUnavailable, OSError) as e:
         logger.error(e)
         self.retry()
     except HTTPNotFound as e:

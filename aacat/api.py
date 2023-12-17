@@ -179,6 +179,7 @@ def get_fleets_recent(request, days_look_back: int = 14):
         "boss__character_name",
         "start_time",
         "end_time",
+        "last_update",
         approx_capture_minutes=ExpressionWrapper(
             F("events")*10/60, output_field=IntegerField())
     )

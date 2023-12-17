@@ -173,6 +173,9 @@ def get_fleets_active(request, limit: int = 50):
     tags=["Fleets"]
 )
 def get_fleets_recent(request, days_look_back: int = 14):
+    if not request.user.has_perm('aacat.view_global'):
+        return 403, "No Perms"
+
     _start = timezone.now() - timedelta(days=days_look_back)
     return models.Fleet.objects.filter(start_time__gte=_start, end_time__isnull=False).values(
         "name",
@@ -192,6 +195,9 @@ def get_fleets_recent(request, days_look_back: int = 14):
     tags=["Fleets"]
 )
 def get_fleet_recent_snapshot(request, fleet_id: int):
+    if not request.user.has_perm('aacat.view_global'):
+        return 403, "No Perms"
+
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
     max_date = models.FleetEvent.objects.filter(
         fleet=fleet).aggregate(max_date=Max("time"))["max_date"]
@@ -229,6 +235,9 @@ def get_fleet_recent_snapshot(request, fleet_id: int):
     tags=["Fleets"]
 )
 def get_fleet_stats(request, fleet_id: int):
+    if not request.user.has_perm('aacat.view_global'):
+        return 403, "No Perms"
+
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
     max_date = models.FleetEvent.objects.filter(
         fleet=fleet).aggregate(max_date=Max("time"))["max_date"]

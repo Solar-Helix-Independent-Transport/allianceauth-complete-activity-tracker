@@ -126,7 +126,7 @@ def post_end_fleet(request, fleet_id: int):
     out = []
     for f in fleets:
         f.end_time = timezone.now()
-        F.save()
+        f.save()
         out.append(f"{f.eve_fleet_id} {f.boss.character_name} closed")
     return 200, out
 

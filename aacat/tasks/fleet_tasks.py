@@ -172,7 +172,7 @@ def bootstrap_stale_fleets(self):
     look_back = timezone.now() - timedelta(seconds=600)  # 5 min staleness
 
     fleets = Fleet.objects.filter(
-        end_date__isnull=True, last_update__lte=look_back)
+        end_time__isnull=True, last_update__lte=look_back)
     for f in fleets:
         snapshot_fleet.apply_async(args=[f.boss.character_id,
                                          f.eve_fleet_id],

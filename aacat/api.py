@@ -161,6 +161,7 @@ def get_fleets_active(request, limit: int = 50):
         "name",
         "eve_fleet_id",
         "boss__character_name",
+        "last_update",
         approx_capture_minutes=ExpressionWrapper(
             F("events")*10/60, output_field=IntegerField())
     )[:limit]

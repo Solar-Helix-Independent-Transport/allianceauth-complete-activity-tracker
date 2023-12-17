@@ -143,7 +143,7 @@ def post_restart_fleet_tasks(request, fleet_id: int):
     out = []
     for f in fleets:
         snapshot_fleet.apply_async(
-            args=[f.boss.character_id, fleet.eve_fleet_id], priority=1)
+            args=[f.boss.character_id, f.eve_fleet_id], priority=1)
         out.append(f"{f.eve_fleet_id} {f.boss.character_name}")
     return 200, out
 

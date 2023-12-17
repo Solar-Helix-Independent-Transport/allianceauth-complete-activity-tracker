@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.services.tasks import QueueOnce
@@ -92,7 +93,7 @@ def bootstrap_snapshot_fleet(self, character_id, fleet_id):
     logger.info(f"Bootstrapping Task for fleet {fleet_id}, {character_id}")
 
 
-@shared_task(bind=True, base=QueueOnce, max_retries=8, retry_backoff=15)
+@shared_task(bind=True, base=QueueOnce, max_retries=4, retry_backoff=15)
 def snapshot_fleet(self, character_id, fleet_id):
     token = Token.get_token(character_id, ['esi-fleets.read_fleet.v1'])
     fleet = Fleet.objects.get(
@@ -164,3 +165,18 @@ def snapshot_fleet(self, character_id, fleet_id):
             f"{e.__class__.__name__} {token.character_name} {fleet_id} ")
         logger.error(e)
         self.retry()
+
+
+@shared_task(bind=True, base=QueueOnce)
+def bootstrap_stale_fleets(self):
+    look_back = timezone.now() - timedelta(seconds=600)  # 5 min staleness
+
+    fleets = Fleet.objects.filter(
+        end_date__isnull=True, last_update__lte=look_back)
+    for f in fleets:
+        snapshot_fleet.apply_async(args=[f.boss.character_id,
+                                         f.eve_fleet_id],
+                                   countdown=9,
+                                   priority=1)
+        logger.info(
+            f"Bootstrapping Stale fleet Task for {f.eve_fleet_id} fleet {f.boss.character_name}")

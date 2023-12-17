@@ -65,6 +65,8 @@ class Fleet(models.Model):
     description = models.TextField(blank=True, null=True)
     motd = models.TextField(blank=True, null=True)
 
+    last_update = models.DateTimeField(auto_now=True)
+
     class Meta:
         default_permissions = ()
 

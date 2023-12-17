@@ -85,7 +85,7 @@ def post_character_search(request, search_text: str, limit: int = 10):
 @api.post(
     "/fleets/track/me",
     response={200: List[schema.Character], 403: str},
-    tags=["Fleets"]
+    tags=["Actions"]
 )
 def post_track_me(request):
     if not request.user.has_perm('aacat.create_fleets'):
@@ -103,7 +103,7 @@ def post_track_me(request):
 @api.post(
     "/fleets/track/{character_id}",
     response={200: schema.Character, 403: str},
-    tags=["Fleets"]
+    tags=["Actions"]
 )
 def post_track_character(request, character_id: int):
     if not request.user.has_perm('aacat.create_fleets'):
@@ -115,17 +115,37 @@ def post_track_character(request, character_id: int):
 
 
 @api.post(
+    "/fleets/end/{fleet_id}",
+    response={200: list, 403: str},
+    tags=["Actions"]
+)
+def post_end_fleet(request, fleet_id: int):
+    if not request.user.has_perm('aacat.create_fleets'):
+        return 403, "No Perms"
+    fleets = models.Fleet.objects.filter(eve_fleet_id=fleet_id)
+    out = []
+    for f in fleets:
+        f.end_time = timezone.now()
+        F.save()
+        out.append(f"{f.eve_fleet_id} {f.boss.character_name} closed")
+    return 200, out
+
+
+@api.post(
     "/fleets/restart/{fleet_id}",
-    response={200: str, 403: str},
-    tags=["Fleets"]
+    response={200: list, 403: str},
+    tags=["Actions"]
 )
 def post_restart_fleet_tasks(request, fleet_id: int):
     if not request.user.has_perm('aacat.create_fleets'):
         return 403, "No Perms"
-    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
-    snapshot_fleet.apply_async(
-        args=[fleet.boss.character_id, fleet.eve_fleet_id], priority=1)
-    return 200, fleet.eve_fleet_id
+    fleets = models.Fleet.objects.filter(eve_fleet_id=fleet_id)
+    out = []
+    for f in fleets:
+        snapshot_fleet.apply_async(
+            args=[f.boss.character_id, fleet.eve_fleet_id], priority=1)
+        out.append(f"{f.eve_fleet_id} {f.boss.character_name}")
+    return 200, out
 
 
 @api.get(

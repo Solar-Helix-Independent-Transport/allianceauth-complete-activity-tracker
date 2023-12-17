@@ -89,7 +89,7 @@ def bootstrap_snapshot_fleet(self, character_id, fleet_id):
                                      fleet_id],
                                countdown=9,
                                priority=1)
-    logger.info(f"Sent Task for fleet {fleet_id}, {character_id}")
+    logger.info(f"Bootstrapping Task for fleet {fleet_id}, {character_id}")
 
 
 @shared_task(bind=True, base=QueueOnce, max_retries=8, retry_backoff=15)
@@ -143,7 +143,7 @@ def snapshot_fleet(self, character_id, fleet_id):
                 new_events.append(_evnt)
             except:
                 pass
-        logger.info(f"Creating DB Entries for {fleet_id}")
+        logger.info(f"Creating {len(new_events)} DB Entries for {fleet_id}")
         FleetEvent.objects.bulk_create(new_events)
         fleet.events += 1
         fleet.save()
@@ -153,11 +153,14 @@ def snapshot_fleet(self, character_id, fleet_id):
                                              countdown=1,
                                              priority=1)
     except HTTPNotFound as e:
-        logger.error(e)
+        logger.info(f"HTTPNotFound, {token.character_name} {fleet_id}")
+        logger.info(e)
         # TODO do we want to retry this a few times?
         # are we not the boss any more? did we DC? i cant think of more ATM...
         fleet.end_time = timezone.now()
         fleet.save()
     except (HTTPBadGateway, HTTPGatewayTimeout, HTTPServiceUnavailable, OSError) as e:
+        logger.info(
+            f"{e.__class__.__name__} {token.character_name} {fleet_id} ")
         logger.error(e)
         self.retry()

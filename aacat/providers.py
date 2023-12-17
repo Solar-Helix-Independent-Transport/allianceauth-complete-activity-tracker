@@ -39,7 +39,7 @@ class EVEClient(EsiClientProvider):
             yield l[i:i + n]
 
     def load_ships_sde(self):
-        cat_id = 6
+        cat_ids = [6, 65]
         groups = []
         group_ids = set()
         print("Loading Groups")
@@ -47,7 +47,7 @@ class EVEClient(EsiClientProvider):
             "https://www.fuzzwork.co.uk/dump/latest/invGroups.csv")
 
         for r in group_data.data:
-            if int(r['categoryID']) == cat_id:
+            if int(r['categoryID']) in cat_ids:
                 group_ids.add(r['groupID'])
                 groups.append(models.ShipCategory(
                     id=r['groupID'], name=r['groupName']))

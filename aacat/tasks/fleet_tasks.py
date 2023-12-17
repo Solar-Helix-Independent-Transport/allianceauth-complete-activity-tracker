@@ -160,29 +160,29 @@ def snapshot_fleet(self, character_id, fleet_id):
                                              countdown=1,
                                              priority=1)
     except HTTPNotFound as e:
-        logger.info(f"HTTPNotFound, {token.character_name} {fleet_id}")
-        logger.info(e)
+        logger.warning(f"HTTPNotFound, {token.character_name} {fleet_id}")
+        logger.warning(e)
         # TODO do we want to retry this a few times?
         # are we not the boss any more? did we DC? i cant think of more ATM...
         fleet.end_time = timezone.now()
         fleet.save()
     except (HTTPBadGateway, HTTPGatewayTimeout, HTTPServiceUnavailable, OSError) as e:
-        logger.info(
+        logger.warning(
             f"{e.__class__.__name__} {token.character_name} {fleet_id} ")
-        logger.error(e)
+        logger.warning(e)
         self.retry()
         # TODO check for retry amount and close fleet on errors?
 
     except Exception as e:
-        logger.error(f"{e.__class__.__name__} {character_id} {fleet_id} ")
-        logger.error(e, stack_info=True)
+        logger.warning(f"{e.__class__.__name__} {character_id} {fleet_id} ")
+        logger.warning(e, stack_info=True)
         self.retry()
         # TODO check for retry amount and close fleet on hard errors?
 
 
 @shared_task(bind=True, base=QueueOnce)
 def bootstrap_stale_fleets(self):
-    look_back = timezone.now() - timedelta(seconds=600)  # 5 min staleness
+    look_back = timezone.now() - timedelta(seconds=300)  # 5 min staleness
 
     fleets = Fleet.objects.filter(
         end_time__isnull=True, last_update__lte=look_back)

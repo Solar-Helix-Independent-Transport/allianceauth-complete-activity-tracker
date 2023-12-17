@@ -13,7 +13,7 @@ from django.utils import timezone
 from esi.models import Token
 
 from .. import providers
-from ..models import Fleet, FleetEvent
+from ..models import Fleet, FleetEvent, ShipCategory, ShipType
 
 logger = logging.getLogger(__name__)
 
@@ -111,16 +111,22 @@ def snapshot_fleet(self, character_id, fleet_id):
         current_time = timezone.now()
 
         char_ids = set([f['character_id'] for f in fleet_characters])
+        type_ids = set([f['ship_type_id'] for f in fleet_characters])
 
         chars = {}
-
         for c in EveCharacter.objects.filter(character_id__in=list(char_ids)).values("character_id", "pk"):
             chars[c['character_id']] = c['pk']
             char_ids.discard(c['character_id'])
 
         for cid in char_ids:
             c = EveCharacter.objects.create_character(cid)
-            chars[c.pk] = c.character_id
+            chars[c.pk] = c.character_id\
+
+        for c in ShipType.objects.filter(id__in=list(type_ids)).values("id"):
+            type_ids.discard(c['id'])
+
+        for id in type_ids:
+            ShipType.objects.create(id=id, name=f"Unknown({id})", cat=None)
 
         for c in fleet_characters:
             types.append(c.get('ship_type_id'))
@@ -165,6 +171,13 @@ def snapshot_fleet(self, character_id, fleet_id):
             f"{e.__class__.__name__} {token.character_name} {fleet_id} ")
         logger.error(e)
         self.retry()
+        # TODO check for retry amount and close fleet on errors?
+
+    except Exception as e:
+        logger.error(f"{e.__class__.__name__} {character_id} {fleet_id} ")
+        logger.error(e, stack_info=True)
+        self.retry()
+        # TODO check for retry amount and close fleet on hard errors?
 
 
 @shared_task(bind=True, base=QueueOnce)

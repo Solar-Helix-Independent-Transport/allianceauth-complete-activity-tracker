@@ -44,6 +44,7 @@ class SnapshotCharacter(Schema):
     ship: EveName
     role: str
     join_time: datetime
+    distance: int
 
 
 class Snapshot(Schema):

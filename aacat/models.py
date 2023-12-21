@@ -51,6 +51,8 @@ class Fleet(models.Model):
     eve_fleet_id = models.BigIntegerField()
 
     boss = models.ForeignKey(EveCharacter, on_delete=models.CASCADE)
+    fc = models.ForeignKey(EveCharacter, on_delete=models.SET_NULL,
+                           default=None, null=True, related_name="fleet_boss")
 
     start_time = models.DateTimeField()
     end_time = models.DateTimeField(blank=True, null=True)
@@ -160,6 +162,7 @@ class FleetEvent(models.Model):
     squad_id = models.BigIntegerField()
     wing_id = models.BigIntegerField(null=True, default=None)
     takes_fleet_warp = models.BooleanField(default=False)
+    distance_from_fc = models.IntegerField(default=-2)
 
     solar_system = models.ForeignKey(
         System, null=True, on_delete=models.SET_NULL)

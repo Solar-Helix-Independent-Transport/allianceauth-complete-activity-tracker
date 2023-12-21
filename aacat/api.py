@@ -236,6 +236,7 @@ def get_fleet_recent_snapshot(request, fleet_id: int):
         snapshot.append({
             "character": e.character_name,
             "main": main_char,
+            "distance": e.distance_from_fc,
             "system": {
                 "id": e.solar_system.id,
                 "name": e.solar_system.name,

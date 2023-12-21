@@ -11,6 +11,8 @@ from django.core.cache import cache
 from django.db.models import Q
 from django.utils import timezone
 from esi.models import Token
+from networkx import NetworkXNoPath
+from routing.routing import route_length
 
 from .. import providers
 from ..models import Fleet, FleetEvent, ShipCategory, ShipType
@@ -74,11 +76,13 @@ def check_character_fleet(self, character_id):
                                             eve_fleet_id=fleet_details.get(
                                                 'fleet_id'),
                                             defaults={'start_time': timezone.now(),
-                                                      "name": f"{char}'s Fleet"})
+                                                      "name": f"{char}'s Fleet",
+                                                      "fc": char})
 
         snapshot_fleet.apply_async(args=[character_id,
                                          fleet_details.get('fleet_id')],
-                                   priority=3)
+                                   priority=1)
+
     except Exception as e:
         logger.error(e, stack_info=True)
         logger.error(f"I'm not in a fleet or i am not the boss.")
@@ -88,7 +92,7 @@ def check_character_fleet(self, character_id):
 def bootstrap_snapshot_fleet(self, character_id, fleet_id):
     snapshot_fleet.apply_async(args=[character_id,
                                      fleet_id],
-                               countdown=9,
+                               countdown=9.5,
                                priority=1)
     logger.info(f"Bootstrapping Task for fleet {fleet_id}, {character_id}")
 
@@ -98,22 +102,34 @@ def snapshot_fleet(self, character_id, fleet_id):
     token = Token.get_token(character_id, ['esi-fleets.read_fleet.v1'])
     fleet = Fleet.objects.get(
         boss__character_id=character_id, eve_fleet_id=fleet_id)
-    logger.info(f"snap-shotting fleet {fleet_id}, {character_id}")
+
+    if fleet.end_time:
+        logger.info(f"Stopping tracking of fleet {fleet_id}")
+        return
+
+    logger.info(f"Starting snap-shotting fleet {fleet_id}, {character_id}")
 
     try:
         fleet_characters = providers.esi.client.Fleets.get_fleets_fleet_id_members(fleet_id=fleet_id,
                                                                                    token=token.valid_access_token()).result()
         new_events = []
-        types = []
-        names = []
-        locations = []
 
         current_time = timezone.now()
 
-        char_ids = set([f['character_id'] for f in fleet_characters])
-        type_ids = set([f['ship_type_id'] for f in fleet_characters])
+        char_ids = set()
+        type_ids = set()
+        fc_system_id = 0
 
+        for f in fleet_characters:
+            char_ids.add(f['character_id'])
+            type_ids.add(f['ship_type_id'])
+            if fleet.fc:
+                if f['character_id'] == fleet.fc.character_id:
+                    fc_system_id = f['solar_system_id']
+
+        system_distances = {}
         chars = {}
+
         for c in EveCharacter.objects.filter(character_id__in=list(char_ids)).values("character_id", "pk"):
             chars[c['character_id']] = c['pk']
             char_ids.discard(c['character_id'])
@@ -129,7 +145,14 @@ def snapshot_fleet(self, character_id, fleet_id):
             ShipType.objects.create(id=id, name=f"Unknown({id})", cat=None)
 
         for c in fleet_characters:
-            types.append(c.get('ship_type_id'))
+            if fc_system_id:
+                if c.get('solar_system_id') not in system_distances:
+                    try:
+                        rl = route_length(fc_system_id, c.get(
+                            'solar_system_id'), static_cache=True)
+                    except NetworkXNoPath:
+                        rl = -1
+                    system_distances[c.get('solar_system_id')] = rl
 
             try:
                 _evnt = FleetEvent(time=current_time,
@@ -144,7 +167,9 @@ def snapshot_fleet(self, character_id, fleet_id):
                                    squad_id=c.get('squad_id'),
                                    wing_id=c.get('wing_id', None),
                                    takes_fleet_warp=c.get('takes_fleet_warp'),
-                                   solar_system_id=c.get('solar_system_id')
+                                   solar_system_id=c.get('solar_system_id'),
+                                   distance_from_fc=system_distances.get(
+                                       c.get('solar_system_id'), -2)
                                    )
 
                 new_events.append(_evnt)
@@ -154,30 +179,31 @@ def snapshot_fleet(self, character_id, fleet_id):
         FleetEvent.objects.bulk_create(new_events)
         fleet.events += 1
         fleet.save()
-        bootstrap_snapshot_fleet.apply_async(args=[character_id,
-                                                   fleet_id],
-                                             # highly threaded we need a delay to finish this task...
-                                             countdown=1,
-                                             priority=1)
     except HTTPNotFound as e:
-        logger.warning(f"HTTPNotFound, {token.character_name} {fleet_id}")
-        logger.warning(e)
+        logger.info(
+            f"HTTPNotFound, {token.character_name} {fleet_id}. Closing Fleet!")
         # TODO do we want to retry this a few times?
         # are we not the boss any more? did we DC? i cant think of more ATM...
         fleet.end_time = timezone.now()
         fleet.save()
+        return
     except (HTTPBadGateway, HTTPGatewayTimeout, HTTPServiceUnavailable, OSError) as e:
-        logger.warning(
+        logger.error(
             f"{e.__class__.__name__} {token.character_name} {fleet_id} ")
-        logger.warning(e)
-        self.retry()
+        logger.error(e)
         # TODO check for retry amount and close fleet on errors?
 
     except Exception as e:
-        logger.warning(f"{e.__class__.__name__} {character_id} {fleet_id} ")
-        logger.warning(e, stack_info=True)
-        self.retry()
+        logger.error(f"{e.__class__.__name__} {character_id} {fleet_id} ")
+        logger.error(e, stack_info=True)
         # TODO check for retry amount and close fleet on hard errors?
+
+    bootstrap_snapshot_fleet.apply_async(args=[character_id,
+                                               fleet_id],
+                                         # highly threaded we need a small delay to finish this task...
+                                         countdown=0.5,
+                                         priority=1)
+    logger.info(f"Completed, snap-shotting fleet {fleet_id}, {character_id}")
 
 
 @shared_task(bind=True, base=QueueOnce)

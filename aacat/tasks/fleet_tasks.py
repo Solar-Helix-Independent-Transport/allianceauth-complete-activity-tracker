@@ -1,4 +1,6 @@
+import json
 import logging
+import time
 from datetime import timedelta
 
 from allianceauth.eveonline.models import EveCharacter
@@ -99,9 +101,12 @@ def bootstrap_snapshot_fleet(self, character_id, fleet_id):
 
 @shared_task(bind=True, base=QueueOnce, max_retries=4, retry_backoff=15)
 def snapshot_fleet(self, character_id, fleet_id):
+    _timer = [time.perf_counter()]
     token = Token.get_token(character_id, ['esi-fleets.read_fleet.v1'])
     fleet = Fleet.objects.get(
         boss__character_id=character_id, eve_fleet_id=fleet_id)
+
+    _timer.append(f"1: {time.perf_counter()-_timer[0]}")
 
     if fleet.end_time:
         logger.info(f"Stopping tracking of fleet {fleet_id}")
@@ -112,6 +117,8 @@ def snapshot_fleet(self, character_id, fleet_id):
     try:
         fleet_characters = providers.esi.client.Fleets.get_fleets_fleet_id_members(fleet_id=fleet_id,
                                                                                    token=token.valid_access_token()).result()
+        _timer.append(f"2: {time.perf_counter()-_timer[0]}")
+
         new_events = []
 
         current_time = timezone.now()
@@ -127,29 +134,36 @@ def snapshot_fleet(self, character_id, fleet_id):
                 if f['character_id'] == fleet.fc.character_id:
                     fc_system_id = f['solar_system_id']
 
+        _timer.append(f"3: {time.perf_counter()-_timer[0]}")
+
         system_distances = {}
         chars = {}
 
         for c in EveCharacter.objects.filter(character_id__in=list(char_ids)).values("character_id", "pk"):
             chars[c['character_id']] = c['pk']
             char_ids.discard(c['character_id'])
-
+        _timer.append(f"4: {time.perf_counter()-_timer[0]}")
         for cid in char_ids:
+            logger.info(f"Creating new character {cid}")
             c = EveCharacter.objects.create_character(cid)
-            chars[c.pk] = c.character_id\
-
+            chars[c.pk] = c.character_id
+        _timer.append(f"5: {time.perf_counter()-_timer[0]}")
         for c in ShipType.objects.filter(id__in=list(type_ids)).values("id"):
             type_ids.discard(c['id'])
-
+        _timer.append(f"6: {time.perf_counter()-_timer[0]}")
         for id in type_ids:
             ShipType.objects.create(id=id, name=f"Unknown({id})", cat=None)
+        _timer.append(f"7: {time.perf_counter()-_timer[0]}")
 
         for c in fleet_characters:
             if fc_system_id:
                 if c.get('solar_system_id') not in system_distances:
                     try:
+                        _1 = time.perf_counter()
                         rl = route_length(fc_system_id, c.get(
                             'solar_system_id'), static_cache=True)
+                        _timer.append(
+                            f"8 {c.get('solar_system_id')}: {time.perf_counter()-_1}")
                     except NetworkXNoPath:
                         rl = -1
                     system_distances[c.get('solar_system_id')] = rl
@@ -175,8 +189,12 @@ def snapshot_fleet(self, character_id, fleet_id):
                 new_events.append(_evnt)
             except:
                 pass
+        _timer.append(f"9: {time.perf_counter()-_timer[0]}")
+
         logger.info(f"Creating {len(new_events)} DB Entries for {fleet_id}")
         FleetEvent.objects.bulk_create(new_events)
+        _timer.append(f"9: {time.perf_counter()-_timer[0]}")
+
         fleet.events += 1
         fleet.save()
     except HTTPNotFound as e:
@@ -197,13 +215,14 @@ def snapshot_fleet(self, character_id, fleet_id):
         logger.error(f"{e.__class__.__name__} {character_id} {fleet_id} ")
         logger.error(e, stack_info=True)
         # TODO check for retry amount and close fleet on hard errors?
-
+    _timer.append(f"10: {time.perf_counter()-_timer[0]}")
     bootstrap_snapshot_fleet.apply_async(args=[character_id,
                                                fleet_id],
                                          # highly threaded we need a small delay to finish this task...
                                          countdown=0.5,
                                          priority=1)
     logger.info(f"Completed, snap-shotting fleet {fleet_id}, {character_id}")
+    logger.info(f"Timing Data: {json.dumps(_timer, indent=4)}")
 
 
 @shared_task(bind=True, base=QueueOnce)

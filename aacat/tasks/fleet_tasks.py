@@ -163,7 +163,7 @@ def snapshot_fleet(self, character_id, fleet_id):
                         rl = route_length(fc_system_id, c.get(
                             'solar_system_id'), static_cache=True)
                         _timer.append(
-                            f"8 {c.get('solar_system_id')}: {time.perf_counter()-_1}")
+                            f"8 {fc_system_id}>{c.get('solar_system_id')} - {rl}: {time.perf_counter()-_1}")
                     except NetworkXNoPath:
                         rl = -1
                     system_distances[c.get('solar_system_id')] = rl

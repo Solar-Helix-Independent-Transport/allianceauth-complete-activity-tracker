@@ -94,6 +94,7 @@ def check_character_fleet(self, character_id):
 def bootstrap_snapshot_fleet(self, character_id, fleet_id):
     snapshot_fleet.apply_async(args=[character_id,
                                      fleet_id],
+                               once={'graceful': False},
                                countdown=9.5,
                                priority=1)
     logger.info(f"Bootstrapping Task for fleet {fleet_id}, {character_id}")
@@ -227,7 +228,7 @@ def snapshot_fleet(self, character_id, fleet_id):
 
 @shared_task(bind=True, base=QueueOnce)
 def bootstrap_stale_fleets(self):
-    look_back = timezone.now() - timedelta(seconds=300)  # 5 min staleness
+    look_back = timezone.now() - timedelta(seconds=60)  # 1 min staleness
 
     fleets = Fleet.objects.filter(
         end_time__isnull=True, last_update__lte=look_back)

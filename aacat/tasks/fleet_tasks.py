@@ -8,6 +8,7 @@ from allianceauth.services.tasks import QueueOnce
 from bravado.exception import (HTTPBadGateway, HTTPGatewayTimeout,
                                HTTPNotFound, HTTPServiceUnavailable)
 from celery import shared_task
+from celery_once import AlreadyQueued
 from django.contrib.auth.models import Permission, User
 from django.core.cache import cache
 from django.db.models import Q
@@ -92,12 +93,16 @@ def check_character_fleet(self, character_id):
 
 @shared_task(bind=True)
 def bootstrap_snapshot_fleet(self, character_id, fleet_id):
-    snapshot_fleet.apply_async(args=[character_id,
-                                     fleet_id],
-                               once={'graceful': False},
-                               countdown=9.5,
-                               priority=1)
-    logger.info(f"Bootstrapping Task for fleet {fleet_id}, {character_id}")
+    try:
+        snapshot_fleet.apply_async(args=[character_id,
+                                         fleet_id],
+                                   once={'graceful': False},
+                                   countdown=9,
+                                   priority=1)
+        logger.info(f"Bootstrapping Task for fleet {fleet_id}, {character_id}")
+    except AlreadyQueued:
+        logger.info(
+            f"Task already Queued, is your Queue overloaded? fleet Task for {fleet_id} fleet {character_id}")
 
 
 @shared_task(bind=True, base=QueueOnce, max_retries=4, retry_backoff=15)
@@ -220,7 +225,7 @@ def snapshot_fleet(self, character_id, fleet_id):
     bootstrap_snapshot_fleet.apply_async(args=[character_id,
                                                fleet_id],
                                          # highly threaded we need a small delay to finish this task...
-                                         countdown=0.5,
+                                         countdown=1,
                                          priority=1)
     logger.info(f"Completed, snap-shotting fleet {fleet_id}, {character_id}")
     logger.info(f"Timing Data: {json.dumps(_timer, indent=4)}")
@@ -228,14 +233,19 @@ def snapshot_fleet(self, character_id, fleet_id):
 
 @shared_task(bind=True, base=QueueOnce)
 def bootstrap_stale_fleets(self):
-    look_back = timezone.now() - timedelta(seconds=60)  # 1 min staleness
+    look_back = timezone.now() - timedelta(seconds=30)  # 30s min staleness
 
     fleets = Fleet.objects.filter(
         end_time__isnull=True, last_update__lte=look_back)
     for f in fleets:
-        snapshot_fleet.apply_async(args=[f.boss.character_id,
-                                         f.eve_fleet_id],
-                                   countdown=9,
-                                   priority=1)
-        logger.info(
-            f"Bootstrapping Stale fleet Task for {f.eve_fleet_id} fleet {f.boss.character_name}")
+        try:
+            snapshot_fleet.apply_async(args=[f.boss.character_id,
+                                             f.eve_fleet_id],
+                                       countdown=9,
+                                       once={'graceful': False},
+                                       priority=1)
+            logger.info(
+                f"Bootstrapping Stale fleet Task for {f.eve_fleet_id} fleet {f.boss.character_name}")
+        except AlreadyQueued:
+            logger.info(
+                f"Task already Queued, is your Queue overloaded? fleet Task for {f.eve_fleet_id} fleet {f.boss.character_name}")

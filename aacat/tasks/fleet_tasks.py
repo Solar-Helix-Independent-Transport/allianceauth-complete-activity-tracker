@@ -103,6 +103,7 @@ def bootstrap_snapshot_fleet(self, character_id, fleet_id):
     except AlreadyQueued:
         logger.info(
             f"Task already Queued, is your Queue overloaded? fleet Task for {fleet_id} fleet {character_id}")
+        self.retry()
 
 
 @shared_task(bind=True, base=QueueOnce, max_retries=4, retry_backoff=15)

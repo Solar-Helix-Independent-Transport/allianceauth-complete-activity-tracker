@@ -29,7 +29,7 @@ api = NinjaAPI(title="CAT API", version="0.0.1",
     tags=["Search"]
 )
 def post_system_search(request, search_text: str, limit: int = 10):
-    if not request.user.has_perm('aacat.view_global'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     return models.System.objects.filter(name__icontains=search_text).values("name", "id", cat=Value("System", output_field=CharField()))[:limit]
@@ -41,7 +41,7 @@ def post_system_search(request, search_text: str, limit: int = 10):
     tags=["Search"]
 )
 def post_constellation_search(request, search_text: str, limit: int = 10):
-    if not request.user.has_perm('aacat.view_global'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     return models.Constellation.objects.filter(name__icontains=search_text).values("name", "id", cat=Value("Constellation", output_field=CharField()))[:limit]
@@ -53,7 +53,7 @@ def post_constellation_search(request, search_text: str, limit: int = 10):
     tags=["Search"]
 )
 def post_region_search(request, search_text: str, limit: int = 10):
-    if not request.user.has_perm('aacat.view_global'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     return models.Region.objects.filter(name__icontains=search_text).values("name", "id", cat=Value("Region", output_field=CharField()))[:limit]
@@ -65,7 +65,7 @@ def post_region_search(request, search_text: str, limit: int = 10):
     tags=["Search"]
 )
 def post_group_search(request, search_text: str, limit: int = 10):
-    if not request.user.has_perm('aacat.view_global'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     return models.Group.objects.filter(name__icontains=search_text).values("name", "id")[:limit]
@@ -77,7 +77,7 @@ def post_group_search(request, search_text: str, limit: int = 10):
     tags=["Search"]
 )
 def post_character_search(request, search_text: str, limit: int = 10):
-    if not request.user.has_perm('aacat.view_global'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     return models.EveCharacter.objects.filter(character_name__icontains=search_text)[:limit]
@@ -92,7 +92,7 @@ def post_track_me(request):
     """
         Track any fleeets currently being run by the logged in user.
     """
-    if not request.user.has_perm('aacat.create_fleets'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
     char_ownerships = request.user.character_ownerships.all()
     characters = []
@@ -113,7 +113,7 @@ def post_track_character(request, character_id: int):
     """
         Track the fleet being run by the character_id, if they are in a fleet.
     """
-    if not request.user.has_perm('aacat.create_fleets'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
     character = EveCharacter.objects.get(character_id=character_id)
     check_character_online.apply_async(
@@ -130,7 +130,7 @@ def post_end_fleet(request, fleet_id: int):
     """
         Stop Tracking a fleet.
     """
-    if not request.user.has_perm('aacat.create_fleets'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
     fleets = models.Fleet.objects.filter(eve_fleet_id=fleet_id)
     out = []
@@ -150,7 +150,7 @@ def post_restart_fleet_tasks(request, fleet_id: int):
     """
         Restart any fleet tasks that may have failed.
     """
-    if not request.user.has_perm('aacat.create_fleets'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
     fleets = models.Fleet.objects.filter(eve_fleet_id=fleet_id)
     out = []
@@ -170,7 +170,7 @@ def get_fleets_active(request, limit: int = 50):
     """
         Show all actively tracked fleets
     """
-    if not request.user.has_perm('aacat.create_fleets'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     return models.Fleet.objects.filter(end_time__isnull=True).values(
@@ -192,7 +192,7 @@ def get_fleets_recent(request, days_look_back: int = 14):
     """
         Show a list of previously tracked fleets
     """
-    if not request.user.has_perm('aacat.view_global'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     _start = timezone.now() - timedelta(days=days_look_back)
@@ -217,7 +217,7 @@ def get_fleet_recent_snapshot(request, fleet_id: int):
     """
         Provide teh most recent snapshot of a fleet
     """
-    if not request.user.has_perm('aacat.view_global'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -261,7 +261,7 @@ def get_fleet_stats(request, fleet_id: int):
     """
         Provide the most recent snapshot of a fleet grouped by ship types etc.
     """
-    if not request.user.has_perm('aacat.view_global'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -287,7 +287,7 @@ def get_fleet_id_from_character_id(request, character_id: int):
     """
         Get the fleet id a character is in.
     """
-    if not request.user.has_perm('aacat.view_global'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     token = Token.get_token(
@@ -315,7 +315,7 @@ def get_fleet_details(request, fleet_id: int):
     """
         Get the fleet settigns and MOTD
     """
-    if not request.user.has_perm('aacat.create_fleets'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -337,7 +337,7 @@ def put_fleet_details(request, fleet_id: int, free_move: bool, motd: str):
     """
         Update fleet Free move and MOTD
     """
-    if not request.user.has_perm('aacat.create_fleets'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -366,7 +366,7 @@ def kick_fleet_member(request, fleet_id: int, character_id: int):
     """
         Kick character from fleet
     """
-    if not request.user.has_perm('aacat.create_fleets'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -389,7 +389,7 @@ def invite_fleet_member(request, fleet_id: int, character_id: int):
     """
         Invite a character to fleet
     """
-    if not request.user.has_perm('aacat.create_fleets'):
+    if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)

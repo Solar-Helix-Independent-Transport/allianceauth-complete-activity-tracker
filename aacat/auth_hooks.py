@@ -37,3 +37,8 @@ def register_cogs():
 @hooks.register('url_hook')
 def register_url():
     return UrlHook(urls, 'aacat', r'^cat/')
+
+
+@hooks.register('discord_cogs_hook')
+def register_cogs():
+    return ["aacat.fleet_cog"]

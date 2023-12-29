@@ -9,7 +9,7 @@ from django.db.models import (CharField, Count, ExpressionWrapper, F,
                               IntegerField, Max, Value)
 from django.utils import timezone
 from esi.models import Token
-from ninja import NinjaAPI
+from ninja import Field, NinjaAPI
 from ninja.security import django_auth
 
 from aacat.tasks.fleet_tasks import check_character_online, snapshot_fleet
@@ -28,7 +28,7 @@ api = NinjaAPI(title="CAT API", version="0.0.1",
     response={200: List[schema.EveName]},
     tags=["Search"]
 )
-def post_system_search(request, search_text: str, limit: int = 10):
+def system_search(request, search_text: str, limit: int = 10):
     if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
@@ -40,7 +40,7 @@ def post_system_search(request, search_text: str, limit: int = 10):
     response={200: List[schema.EveName]},
     tags=["Search"]
 )
-def post_constellation_search(request, search_text: str, limit: int = 10):
+def constellation_search(request, search_text: str, limit: int = 10):
     if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
@@ -52,7 +52,7 @@ def post_constellation_search(request, search_text: str, limit: int = 10):
     response={200: List[schema.EveName]},
     tags=["Search"]
 )
-def post_region_search(request, search_text: str, limit: int = 10):
+def region_search(request, search_text: str, limit: int = 10):
     if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
@@ -64,7 +64,7 @@ def post_region_search(request, search_text: str, limit: int = 10):
     response={200: List},
     tags=["Search"]
 )
-def post_group_search(request, search_text: str, limit: int = 10):
+def group_search(request, search_text: str, limit: int = 10):
     if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
@@ -76,7 +76,7 @@ def post_group_search(request, search_text: str, limit: int = 10):
     response={200: List[schema.Character]},
     tags=["Search"]
 )
-def post_character_search(request, search_text: str, limit: int = 10):
+def character_search(request, search_text: str, limit: int = 10):
     if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
@@ -88,7 +88,7 @@ def post_character_search(request, search_text: str, limit: int = 10):
     response={200: List[schema.Character], 403: str},
     tags=["Tracking"]
 )
-def post_track_me(request):
+def track_me(request):
     """
         Track any fleeets currently being run by the logged in user.
     """
@@ -109,7 +109,7 @@ def post_track_me(request):
     response={200: schema.Character, 403: str},
     tags=["Tracking"]
 )
-def post_track_character(request, character_id: int):
+def track_character(request, character_id: int):
     """
         Track the fleet being run by the character_id, if they are in a fleet.
     """
@@ -126,7 +126,7 @@ def post_track_character(request, character_id: int):
     response={200: list, 403: str},
     tags=["Tracking"]
 )
-def post_end_fleet(request, fleet_id: int):
+def end_fleet(request, fleet_id: int):
     """
         Stop Tracking a fleet.
     """
@@ -146,7 +146,7 @@ def post_end_fleet(request, fleet_id: int):
     response={200: list, 403: str},
     tags=["Tracking"]
 )
-def post_restart_fleet_tasks(request, fleet_id: int):
+def restart_fleet_tasks(request, fleet_id: int):
     """
         Restart any fleet tasks that may have failed.
     """
@@ -333,7 +333,7 @@ def get_fleet_details(request, fleet_id: int):
     response={200: dict, 403: str},
     tags=["Actions"]
 )
-def put_fleet_details(request, fleet_id: int, free_move: bool, motd: str):
+def put_fleet_details(request, fleet_id: int, free_move: bool = None, motd: str = None):
     """
         Update fleet Free move and MOTD
     """
@@ -343,12 +343,17 @@ def put_fleet_details(request, fleet_id: int, free_move: bool, motd: str):
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
     token = Token.get_token(fleet.boss.character_id, [
                             'esi-fleets.write_fleet.v1'])
+    new_settings = {}
+
+    if free_move is not None:
+        new_settings['is_free_move'] = free_move
+
+    if motd is not None:
+        new_settings['motd'] = motd
+
     details = providers.esi.client.Fleets.put_fleets_fleet_id(
         fleet_id=fleet_id,
-        new_settings={
-            "is_free_move": free_move,
-            "motd": motd
-        },
+        new_settings=new_settings,
         token=token.valid_access_token()
     ).result()
     return {
@@ -404,3 +409,168 @@ def invite_fleet_member(request, fleet_id: int, character_id: int):
         token=token.valid_access_token()
     ).result()
     return f"sent Invite to {character_id} from {fleet_id} aka {token.character_name}"
+
+
+@api.get(
+    "/fleets/{fleet_id}/structure",
+    # response={200: any, 403: str},
+    tags=["Structure"]
+)
+def get_fleet_structure(request, fleet_id: int):
+    """
+        Get the fleet hierarchy
+    """
+    if not request.user.has_perm('aacat.edit_fleets'):
+        return 403, "No Perms"
+
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+    token = Token.get_token(fleet.boss.character_id, [
+                            'esi-fleets.read_fleet.v1'])
+    fleet = providers.esi.client.Fleets.get_fleets_fleet_id_wings(
+        fleet_id=fleet_id,
+        token=token.valid_access_token()
+    ).result()
+    return fleet
+
+
+@api.post(
+    "/fleets/{fleet_id}/wing",
+    # response={200: any, 403: str},
+    tags=["Structure"]
+)
+def create_wing(request, fleet_id: int):
+    """
+        Create a wing in a fleet
+    """
+    if not request.user.has_perm('aacat.edit_fleets'):
+        return 403, "No Perms"
+
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+    token = Token.get_token(fleet.boss.character_id, [
+                            'esi-fleets.write_fleet.v1'])
+    fleet = providers.esi.client.Fleets.post_fleets_fleet_id_wings(
+        fleet_id=fleet_id,
+        token=token.valid_access_token()
+    ).result()
+    return fleet
+
+
+@api.delete(
+    "/fleets/{fleet_id}/wing/{wing_id}",
+    # response={200: any, 403: str},
+    tags=["Structure"]
+)
+def delete_wing(request, fleet_id: int, wing_id: int):
+    """
+        Delete a Wing in a fleet
+    """
+    if not request.user.has_perm('aacat.edit_fleets'):
+        return 403, "No Perms"
+
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+    token = Token.get_token(fleet.boss.character_id, [
+                            'esi-fleets.write_fleet.v1'])
+    wing_deleted = providers.esi.client.Fleets.delete_fleets_fleet_id_wings_wing_id(
+        fleet_id=fleet_id,
+        wing_id=wing_id,
+        token=token.valid_access_token()
+    ).result()
+    return wing_deleted
+
+
+@api.put(
+    "/fleets/{fleet_id}/wing/{wing_id}",
+    # response={200: any, 403: str},
+    tags=["Structure"]
+)
+def rename_wing(request, fleet_id: int, wing_id: int, name: str):
+    """
+        Rename a Wing in a fleet
+    """
+    if not request.user.has_perm('aacat.edit_fleets'):
+        return 403, "No Perms"
+
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+    token = Token.get_token(fleet.boss.character_id, [
+                            'esi-fleets.write_fleet.v1'])
+    wing_renamed = providers.esi.client.Fleets.put_fleets_fleet_id_wings_wing_id(
+        fleet_id=fleet_id,
+        wing_id=wing_id,
+        naming={
+            "name": name
+        },
+        token=token.valid_access_token()
+    ).result()
+    return wing_renamed
+
+
+@api.post(
+    "/fleets/{fleet_id}/wing/{wing_id}/squad",
+    # response={200: any, 403: str},
+    tags=["Structure"]
+)
+def create_squad(request, fleet_id: int, wing_id: int):
+    """
+        Create a wing in a fleet
+    """
+    if not request.user.has_perm('aacat.edit_fleets'):
+        return 403, "No Perms"
+
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+    token = Token.get_token(fleet.boss.character_id, [
+                            'esi-fleets.write_fleet.v1'])
+    fleet = providers.esi.client.Fleets.post_fleets_fleet_id_wings_wing_id_squads(
+        fleet_id=fleet_id,
+        wing_id=wing_id,
+        token=token.valid_access_token()
+    ).result()
+    return fleet
+
+
+@api.delete(
+    "/fleets/{fleet_id}/squad/{squad_id}",
+    # response={200: any, 403: str},
+    tags=["Structure"]
+)
+def delete_squad(request, fleet_id: int, squad_id: int):
+    """
+        Delete a Squad in a fleet
+    """
+    if not request.user.has_perm('aacat.edit_fleets'):
+        return 403, "No Perms"
+
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+    token = Token.get_token(fleet.boss.character_id, [
+                            'esi-fleets.write_fleet.v1'])
+    wing_deleted = providers.esi.client.Fleets.delete_fleets_fleet_id_squads_squad_id(
+        fleet_id=fleet_id,
+        squad_id=squad_id,
+        token=token.valid_access_token()
+    ).result()
+    return wing_deleted
+
+
+@api.put(
+    "/fleets/{fleet_id}/squad/{squad_id}",
+    # response={200: any, 403: str},
+    tags=["Structure"]
+)
+def rename_squad(request, fleet_id: int, squad_id: int, name: str):
+    """
+        Rename a Wing in a fleet
+    """
+    if not request.user.has_perm('aacat.edit_fleets'):
+        return 403, "No Perms"
+
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+    token = Token.get_token(fleet.boss.character_id, [
+                            'esi-fleets.write_fleet.v1'])
+    wing_renamed = providers.esi.client.Fleets.put_fleets_fleet_id_squads_squad_id(
+        fleet_id=fleet_id,
+        squad_id=squad_id,
+        naming={
+            "name": name
+        },
+        token=token.valid_access_token()
+    ).result()
+    return wing_renamed

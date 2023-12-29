@@ -116,8 +116,6 @@ def etag_results(operation, token, force_refresh=False):
             except (HTTPNotModified) as e:  # etag is match from ESI
                 logger.debug(
                     f"ETag: HTTPNotModified Hit ETag {operation.operation.operation_id} Ei:{etags_incomplete} - {stringify_params(operation)} - P:{e.response.headers['X-Pages']}")
-                logger.debug(
-                    f"ESI_TIME: HTTPNotModified Page {time.perf_counter()-_pg_tm} {operation.operation.operation_id} {stringify_params(operation)}")
                 total_pages = int(e.response.headers['X-Pages'])
 
                 if not etags_incomplete:
@@ -138,12 +136,7 @@ def etag_results(operation, token, force_refresh=False):
                     results = list()
             logger.debug(
                 f"ETag: No Etag {operation.operation.operation_id} - {stringify_params(operation)}")
-            logger.debug(
-                f"ESI_TIME: Fresh Page {time.perf_counter()-_pg_tm} {operation.operation.operation_id} {stringify_params(operation)}")
-
         if not etags_incomplete and not force_refresh:
-            logger.debug(
-                f"ESI_TIME: OVERALL NotModifiedError {time.perf_counter()-_start_tm} {operation.operation.operation_id} {stringify_params(operation)}")
             raise NotModifiedError()
 
     else:  # it doesn't so just return as usual
@@ -154,9 +147,6 @@ def etag_results(operation, token, force_refresh=False):
         except HTTPNotModified as e:
             logger.debug(
                 f"ETag: HTTPNotModified Hit ETag {operation.operation.operation_id} - {stringify_params(operation)}")
-            logger.debug(
-                f"ESI_TIME: HTTPNotModified {time.perf_counter()-_start_tm} {operation.operation.operation_id} {stringify_params(operation)}")
-
             set_etag_header(operation, e.response)
             raise NotModifiedError()
 
@@ -164,8 +154,6 @@ def etag_results(operation, token, force_refresh=False):
             # etag is match in cache
             logger.debug(
                 f"ETag: result Cache Hit ETag {operation.operation.operation_id} - {stringify_params(operation)}")
-            logger.debug(
-                f"ESI_TIME: result Cache Hit ETag {time.perf_counter()-_start_tm} {operation.operation.operation_id} {stringify_params(operation)}")
             set_etag_header(operation, headers)
             raise NotModifiedError()
 

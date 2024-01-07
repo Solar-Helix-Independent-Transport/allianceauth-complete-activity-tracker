@@ -15,6 +15,7 @@ from django.db.models import Q
 from django.utils import timezone
 from esi.models import Token
 from networkx import NetworkXNoPath
+from routing.edges import include_corptools_jumpbridges
 from routing.routing import route_length
 
 from .. import providers
@@ -162,13 +163,23 @@ def snapshot_fleet(self, character_id, fleet_id):
             ShipType.objects.create(id=id, name=f"Unknown({id})", cat=None)
         _timer.append(f"7: {time.perf_counter()-_timer[0]}")
 
+        extra_edges = []
+        try:
+            extra_edges += include_corptools_jumpbridges()
+        except Exception as e:
+            logger.warning(
+                "Failed to pull JB's from corptools")
+            logger.warning(exc_info=True)
+
         for c in fleet_characters:
             if fc_system_id:
                 if c.get('solar_system_id') not in system_distances:
                     try:
                         _1 = time.perf_counter()
                         rl = route_length(fc_system_id, c.get(
-                            'solar_system_id'), static_cache=True)
+                            'solar_system_id'),
+                            edges=extra_edges,
+                            static_cache=True)
                         _timer.append(
                             f"8 {fc_system_id}>{c.get('solar_system_id')} - {rl}: {time.perf_counter()-_1}")
                     except NetworkXNoPath:

@@ -286,7 +286,7 @@ def get_fleet_stats(request, fleet_id: int):
 )
 def get_fleet_time_diff(request, fleet_id: int, minutes: int):
     """
-        Provide the rolling changes of a fleet in the time period
+        Provide the rolling changes of a fleets comp in the time period
     """
     if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
@@ -346,6 +346,64 @@ def get_fleet_time_diff(request, fleet_id: int, minutes: int):
         })
 
     return list(output.values())
+
+
+@api.get(
+    "/fleets/{fleet_id}/time_diff/{minutes}/mains",
+    response={200: dict},
+    tags=["Stats"]
+)
+def get_fleet_time_diff_mains(request, fleet_id: int, minutes: int):
+    """
+        Provide the rolling changes of a fleets members in the time period
+    """
+    if not request.user.has_perm('aacat.edit_fleets'):
+        return 403, "No Perms"
+
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+    max_date = models.FleetEvent.objects.filter(
+        fleet=fleet).aggregate(max_date=Max("time"))["max_date"]
+    latest_events = models.FleetEvent.objects.filter(
+        fleet=fleet, time=max_date)
+
+    time_start = timezone.now() - timedelta(minutes=minutes)
+    min_date = models.FleetEvent.objects.filter(
+        fleet=fleet, time__gte=time_start).aggregate(min_date=Min("time"))["min_date"]
+    oldest_events = models.FleetEvent.objects.filter(
+        fleet=fleet, time=min_date)
+
+    start = []
+    output = {
+        "new_joiners": [],
+        "deserters": []
+    }
+    # output = defaultdict( lambda: {
+    #     "count":0,
+    #     "name": "",
+    #     "type_id": 0
+    # })
+    start_chars = oldest_events.values(
+        name=F("character_name__character_ownership__user__profile__main_character_name")
+    ).distinct()
+
+    for ev in start_chars:
+        start.append(
+            ev['name']
+        )
+
+    end_chars = latest_events.values(
+        name=F("character_name__character_ownership__user__profile__main_character_name")
+    ).distinct()
+
+    for ev in end_chars:
+        c = ev['name']
+        if c in start:
+            start.pop(start.index(c))
+        else:
+            output['new_joiners'].append(ev['name'])
+
+    output['deserters'] = start
+    return output.values()
 
 
 @api.get(

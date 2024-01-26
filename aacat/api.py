@@ -318,7 +318,7 @@ def get_fleet_time_diff(request, fleet_id: int, minutes: int):
     )
 
     for ev in start_counts:
-        output[ev.name] = {
+        output[ev['name']] = {
             "name": ev['name'],
             "start_count": ev['count'],
             "type_id": ev['type_id']
@@ -333,12 +333,12 @@ def get_fleet_time_diff(request, fleet_id: int, minutes: int):
 
     for ev in end_counts:
         if ev.name not in output:
-            output[ev.name] = {
+            output[ev['name']] = {
                 "name": ev['name'],
                 "start_count": 0,
                 "type_id": ev['type_id']
             }
-        output[ev.name] = {
+        output[ev['name']] = {
             "end_count": ev['count'],
             "diff": output[ev['name']]["end_count"] - output[ev['name']]["start_count"]
         }

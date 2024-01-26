@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from datetime import timedelta
 from typing import List
 
@@ -6,7 +7,7 @@ from allianceauth.eveonline.models import EveCharacter
 from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.db.models import (CharField, Count, ExpressionWrapper, F,
-                              IntegerField, Max, Value)
+                              IntegerField, Max, Min, Value)
 from django.utils import timezone
 from esi.models import Token
 from ninja import Field, NinjaAPI
@@ -276,6 +277,73 @@ def get_fleet_stats(request, fleet_id: int):
         type_id=F("ship_type_id")
     )
     return ship_counts
+
+
+@api.get(
+    "/fleets/{fleet_id}/time_diff/{minutes}",
+    response={200: list},
+    tags=["Stats"]
+)
+def get_fleet_time_diff(request, fleet_id: int, minutes: int):
+    """
+        Provide the rolling changes of a fleet in the time period
+    """
+    if not request.user.has_perm('aacat.edit_fleets'):
+        return 403, "No Perms"
+
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+    max_date = models.FleetEvent.objects.filter(
+        fleet=fleet).aggregate(max_date=Max("time"))["max_date"]
+    latest_events = models.FleetEvent.objects.filter(
+        fleet=fleet, time=max_date)
+
+    time_start = timezone.now() - timedelta(minutes=minutes)
+    min_date = models.FleetEvent.objects.filter(
+        fleet=fleet, time__gte=time_start).aggregate(min_date=Min("time"))["min_date"]
+    oldest_events = models.FleetEvent.objects.filter(
+        fleet=fleet, time=min_date)
+
+    output = {}
+    # output = defaultdict( lambda: {
+    #     "count":0,
+    #     "name": "",
+    #     "type_id": 0
+    # })
+
+    start_counts = oldest_events.values(
+        name=F("ship__name")
+    ).annotate(
+        count=Count("ship__name"),
+        type_id=F("ship_type_id")
+    )
+
+    for ev in start_counts:
+        output[ev.name] = {
+            "name": ev.name,
+            "start_count": ev.count,
+            "type_id": ev.type_id
+        }
+
+    end_counts = latest_events.values(
+        name=F("ship__name")
+    ).annotate(
+        count=Count("ship__name"),
+        type_id=F("ship_type_id")
+    )
+
+    for ev in end_counts:
+        if ev.name not in output:
+            output[ev.name] = {
+                "name": ev.name,
+                "start_count": 0,
+                "type_id": ev.type_id
+            }
+        output[ev.name] = {
+            "end_count": ev.count,
+            "diff": output[ev.name]["end_count"] - output[ev.name]["start_count"]
+        }
+
+    return output
 
 
 @api.get(

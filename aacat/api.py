@@ -340,7 +340,7 @@ def get_fleet_time_diff(request, fleet_id: int, minutes: int):
             }
         output[ev['name']] = {
             "end_count": ev['count'],
-            "diff": output[ev['name']]["end_count"] - output[ev['name']]["start_count"]
+            "diff": ev['count'] - output[ev['name']]["start_count"]
         }
 
     return [output.values()]

@@ -405,7 +405,7 @@ def get_fleet_time_diff_mains(request, fleet_id: int, minutes: int):
             output['new_joiners'].append(ev['name'])
 
     output['deserters'] = start
-    return output.values()
+    return output
 
 
 @api.get(

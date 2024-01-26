@@ -343,7 +343,7 @@ def get_fleet_time_diff(request, fleet_id: int, minutes: int):
             "diff": ev['count'] - output[ev['name']]["start_count"]
         }
 
-    return [output.values()]
+    return list(output.values())
 
 
 @api.get(

@@ -383,7 +383,8 @@ def get_fleet_time_diff_mains(request, fleet_id: int, minutes: int):
     #     "type_id": 0
     # })
     start_chars = oldest_events.values(
-        name=F("character_name__character_ownership__user__profile__main_character_name")
+        name=F(
+            "character_name__character_ownership__user__profile__main_character__character_name")
     ).distinct()
 
     for ev in start_chars:
@@ -392,7 +393,8 @@ def get_fleet_time_diff_mains(request, fleet_id: int, minutes: int):
         )
 
     end_chars = latest_events.values(
-        name=F("character_name__character_ownership__user__profile__main_character_name")
+        name=F(
+            "character_name__character_ownership__user__profile__main_character__character_name")
     ).distinct()
 
     for ev in end_chars:

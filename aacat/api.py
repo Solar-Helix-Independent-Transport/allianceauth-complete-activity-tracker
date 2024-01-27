@@ -409,6 +409,70 @@ def get_fleet_time_diff_mains(request, fleet_id: int, minutes: int):
 
 
 @api.get(
+    "/fleets/{fleet_id}/character_changes",
+    response={200: dict},
+    tags=["Stats"]
+)
+def get_fleet_character_changes(request, fleet_id: int):
+    """
+        Provide an overview of fleet members who have left/joined late
+    """
+    if not request.user.has_perm('aacat.edit_fleets'):
+        return 403, "No Perms"
+
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+
+    max_date = models.FleetEvent.objects.filter(
+        fleet=fleet).aggregate(max_date=Max("time"))["max_date"]
+
+    latest_events = models.FleetEvent.objects.filter(
+        fleet=fleet, time=max_date)
+
+    current = []
+    output = {
+        "joiners": [],
+        "leavers": []
+    }
+
+    current_chars = latest_events.values(
+        name=F(
+            "character_name__character_ownership__user__profile__main_character__character_name")
+    ).distinct()
+
+    for ev in current_chars:
+        current.append(
+            ev['name']
+        )
+
+    total_events = models.FleetEvent.objects.filter(
+        fleet=fleet
+    ).values(
+        "time"
+    ).aggregate(
+        total=Count("time", distinct=True)
+    )['total']
+
+    char_events = models.FleetEvent.objects.filter(
+        fleet=fleet
+    ).values(
+        name=F(
+            "character_name__character_ownership__user__profile__main_character__character_name"),
+        event_time=F("time")
+    ).annotate(
+        count=Count("time", distinct=True)
+    )
+
+    for c in char_events:
+        if c['name'] in current:
+            output['joiners'].append(c)
+        else:
+            output['leavers'].append(c)
+
+    output['total_events'] = total_events
+    return output
+
+
+@api.get(
     "/fleets/{character_id}/fleet_id",
     response={200: int, 404: str, 403: str},
     tags=["Search"]

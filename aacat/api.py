@@ -456,8 +456,7 @@ def get_fleet_character_changes(request, fleet_id: int):
         fleet=fleet
     ).values(
         name=F(
-            "character_name__character_ownership__user__profile__main_character__character_name"),
-        event_time=F("time")
+            "character_name__character_ownership__user__profile__main_character__character_name")
     ).annotate(
         count=Count("time", distinct=True)
     )

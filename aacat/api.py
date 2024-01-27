@@ -430,6 +430,7 @@ def get_fleet_character_changes(request, fleet_id: int):
 
     current = []
     output = {
+        "current": [],
         "joiners": [],
         "leavers": []
     }
@@ -460,10 +461,14 @@ def get_fleet_character_changes(request, fleet_id: int):
     ).annotate(
         count=Count("time", distinct=True)
     )
+    cuttoff = total_events * 0.90
 
     for c in char_events:
         if c['name'] in current:
-            output['joiners'].append(c)
+            if c['count'] > cuttoff:
+                output['current'].append(c)
+            else:
+                output['joiners'].append(c)
         else:
             output['leavers'].append(c)
 

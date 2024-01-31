@@ -76,12 +76,16 @@ def check_character_fleet(self, character_id):
             f"{token.character_name} the boss of the fleet {fleet_details.get('fleet_id')}")
 
         char = EveCharacter.objects.get(character_id=character_id)
-        fleet = Fleet.objects.get_or_create(boss=char,
-                                            eve_fleet_id=fleet_details.get(
-                                                'fleet_id'),
-                                            defaults={'start_time': timezone.now(),
-                                                      "name": f"{char}'s Fleet",
-                                                      "fc": char})
+        fleet, created = Fleet.objects.get_or_create(boss=char,
+                                                     eve_fleet_id=fleet_details.get(
+                                                         'fleet_id'),
+                                                     defaults={'start_time': timezone.now(),
+                                                               "name": f"{char}'s Fleet",
+                                                               "fc": char})
+        if not created:
+            if fleet.end_time:
+                fleet.end_time = None
+                fleet.save()
 
         snapshot_fleet.apply_async(args=[character_id,
                                          fleet_details.get('fleet_id')],
@@ -98,7 +102,7 @@ def bootstrap_snapshot_fleet(self, character_id, fleet_id):
         snapshot_fleet.apply_async(args=[character_id,
                                          fleet_id],
                                    once={'graceful': False},
-                                   countdown=9,
+                                   countdown=4,
                                    priority=1)
         logger.info(f"Bootstrapping Task for fleet {fleet_id}, {character_id}")
     except AlreadyQueued:
@@ -169,7 +173,7 @@ def snapshot_fleet(self, character_id, fleet_id):
         except Exception as e:
             logger.warning(
                 "Failed to pull JB's from corptools")
-            logger.warning(exc_info=True)
+            logger.warning("NO JBS", exc_info=True)
 
         for c in fleet_characters:
             if fc_system_id:

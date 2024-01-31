@@ -7,7 +7,7 @@ from allianceauth.eveonline.models import EveCharacter
 from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.db.models import (CharField, Count, ExpressionWrapper, F,
-                              IntegerField, Max, Min, Value)
+                              IntegerField, Max, Min, TextChoices, Value)
 from django.utils import timezone
 from esi.models import Token
 from ninja import Field, NinjaAPI
@@ -138,7 +138,7 @@ def end_fleet(request, fleet_id: int):
     for f in fleets:
         f.end_time = timezone.now()
         f.save()
-        out.append(f"{f.eve_fleet_id} {f.boss.character_name} closed")
+        out.append("Tracking Stopped")
     return 200, out
 
 
@@ -178,9 +178,8 @@ def get_fleets_active(request, limit: int = 50):
         "name",
         "eve_fleet_id",
         "boss__character_name",
-        "last_update",
-        approx_capture_minutes=ExpressionWrapper(
-            F("events")*10/60, output_field=IntegerField())
+        "boss__character_id",
+        "last_update"
     )[:limit]
 
 
@@ -201,11 +200,10 @@ def get_fleets_recent(request, days_look_back: int = 14):
         "name",
         "eve_fleet_id",
         "boss__character_name",
+        "boss__character_id",
         "start_time",
         "end_time",
-        "last_update",
-        approx_capture_minutes=ExpressionWrapper(
-            F("events")*10/60, output_field=IntegerField())
+        "last_update"
     )
 
 
@@ -274,8 +272,10 @@ def get_fleet_stats(request, fleet_id: int):
         name=F("ship__name")
     ).annotate(
         count=Count("ship__name"),
-        type_id=F("ship_type_id")
-    )
+        type_id=F("ship_type_id"),
+        cat_name=F("ship__cat__name"),
+        cat_id=F("ship__cat__id")
+    ).order_by("-count")
     return ship_counts
 
 
@@ -594,6 +594,60 @@ def invite_fleet_member(request, fleet_id: int, character_id: int):
     """
     if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
+
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+    token = Token.get_token(fleet.boss.character_id, [
+                            'esi-fleets.write_fleet.v1'])
+    join = providers.esi.client.Fleets.post_fleets_fleet_id_members(
+        fleet_id=fleet_id,
+        invitation={
+            "character_id": character_id,
+            "role": "squad_member"
+        },
+        token=token.valid_access_token()
+    ).result()
+    return f"sent Invite to {character_id} from {fleet_id} aka {token.character_name}"
+
+
+class FleetRoles(TextChoices):
+    FLEET_COMMANDER = "fleet_commander"
+    WING_COMMANDER = "wing_commander"
+    SQUAD_COMMANDER = "squad_commander"
+    SQUAD_MEMBER = "squad_member "
+
+
+@api.put(
+    "/fleets/{fleet_id}/move/{character_id}",
+    response={200: str, 403: str, 400: str},
+    tags=["Actions"]
+)
+def move_fleet_member(request, fleet_id: int, character_id: int, role: FleetRoles, squad_id: int = None, wing_id: int = None):
+    """
+        Move a character in fleet
+
+        If a character is moved to the `fleet_commander` role,
+        **neither** `wing_id` or `squad_id` should be specified.
+
+        If a character is moved to the `wing_commander` role,
+        **only** `wing_id` should be specified.
+
+        If a character is moved to the `squad_commander` role,
+        **both** `wing_id` and `squad_id` should be specified.
+
+        If a character is moved to the `squad_member` role,
+        **both** `wing_id` and `squad_id` should be specified.
+    """
+    if not request.user.has_perm('aacat.edit_fleets'):
+        return 403, "No Perms"
+
+    if role == FleetRoles.FLEET_COMMANDER and not squad_id is None and not wing_id is None:
+        return 401, f"{FleetRoles.SQUAD_COMMANDER} requires neither squad_id and wing_id"
+
+    if role == FleetRoles.SQUAD_COMMANDER and (squad_id is None or wing_id is None):
+        return 401, f"{FleetRoles.SQUAD_COMMANDER} requires both squad_id and wing_id"
+
+    if role == FleetRoles.SQUAD_COMMANDER and (squad_id is None or wing_id is None):
+        return 401, f"{FleetRoles.SQUAD_COMMANDER} requires both squad_id and wing_id"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
     token = Token.get_token(fleet.boss.character_id, [

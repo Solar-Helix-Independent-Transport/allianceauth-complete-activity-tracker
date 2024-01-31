@@ -1,0 +1,977 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "CAT API", "version": "0.0.1", "description": "" },
+  "paths": {
+    "/cat/api/search/system/": {
+      "post": {
+        "operationId": "aacat_api_system_search",
+        "summary": "System Search",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search_text",
+            "schema": { "title": "Search Text", "type": "string" },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": { "default": 10, "title": "Limit", "type": "integer" },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/EveName" },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Search"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/search/constellation/": {
+      "post": {
+        "operationId": "aacat_api_constellation_search",
+        "summary": "Constellation Search",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search_text",
+            "schema": { "title": "Search Text", "type": "string" },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": { "default": 10, "title": "Limit", "type": "integer" },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/EveName" },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Search"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/search/region/": {
+      "post": {
+        "operationId": "aacat_api_region_search",
+        "summary": "Region Search",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search_text",
+            "schema": { "title": "Search Text", "type": "string" },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": { "default": 10, "title": "Limit", "type": "integer" },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/EveName" },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Search"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/search/auth/group/": {
+      "post": {
+        "operationId": "aacat_api_group_search",
+        "summary": "Group Search",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search_text",
+            "schema": { "title": "Search Text", "type": "string" },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": { "default": 10, "title": "Limit", "type": "integer" },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "items": {}, "title": "Response", "type": "array" }
+              }
+            }
+          }
+        },
+        "tags": ["Search"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/search/auth/character/": {
+      "post": {
+        "operationId": "aacat_api_character_search",
+        "summary": "Character Search",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search_text",
+            "schema": { "title": "Search Text", "type": "string" },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": { "default": 10, "title": "Limit", "type": "integer" },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/Character" },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Search"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/track": {
+      "post": {
+        "operationId": "aacat_api_track_me",
+        "summary": "Track Me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/Character" },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          }
+        },
+        "description": "Track any fleeets currently being run by the logged in user.",
+        "tags": ["Tracking"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{character_id}/track": {
+      "post": {
+        "operationId": "aacat_api_track_character",
+        "summary": "Track Character",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "character_id",
+            "schema": { "title": "Character Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Character" } }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          }
+        },
+        "description": "Track the fleet being run by the character_id, if they are in a fleet.",
+        "tags": ["Tracking"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/end": {
+      "post": {
+        "operationId": "aacat_api_end_fleet",
+        "summary": "End Fleet",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "items": {}, "title": "Response", "type": "array" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          }
+        },
+        "description": "Stop Tracking a fleet.",
+        "tags": ["Tracking"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/restart": {
+      "post": {
+        "operationId": "aacat_api_restart_fleet_tasks",
+        "summary": "Restart Fleet Tasks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "items": {}, "title": "Response", "type": "array" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          }
+        },
+        "description": "Restart any fleet tasks that may have failed.",
+        "tags": ["Tracking"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/active/": {
+      "get": {
+        "operationId": "aacat_api_get_fleets_active",
+        "summary": "Get Fleets Active",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": { "default": 50, "title": "Limit", "type": "integer" },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "items": {}, "title": "Response", "type": "array" }
+              }
+            }
+          }
+        },
+        "description": "Show all actively tracked fleets",
+        "tags": ["Stats"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/recent/": {
+      "get": {
+        "operationId": "aacat_api_get_fleets_recent",
+        "summary": "Get Fleets Recent",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days_look_back",
+            "schema": { "default": 14, "title": "Days Look Back", "type": "integer" },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "items": {}, "title": "Response", "type": "array" }
+              }
+            }
+          }
+        },
+        "description": "Show a list of previously tracked fleets",
+        "tags": ["Stats"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/snapshot": {
+      "get": {
+        "operationId": "aacat_api_get_fleet_recent_snapshot",
+        "summary": "Get Fleet Recent Snapshot",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Snapshot" } }
+            }
+          }
+        },
+        "description": "Provide teh most recent snapshot of a fleet",
+        "tags": ["Stats"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/stats": {
+      "get": {
+        "operationId": "aacat_api_get_fleet_stats",
+        "summary": "Get Fleet Stats",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "items": {}, "title": "Response", "type": "array" }
+              }
+            }
+          }
+        },
+        "description": "Provide the most recent snapshot of a fleet grouped by ship types etc.",
+        "tags": ["Stats"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/time_diff/{minutes}": {
+      "get": {
+        "operationId": "aacat_api_get_fleet_time_diff",
+        "summary": "Get Fleet Time Diff",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "minutes",
+            "schema": { "title": "Minutes", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "items": {}, "title": "Response", "type": "array" }
+              }
+            }
+          }
+        },
+        "description": "Provide the rolling changes of a fleets comp in the time period",
+        "tags": ["Stats"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/time_diff/{minutes}/mains": {
+      "get": {
+        "operationId": "aacat_api_get_fleet_time_diff_mains",
+        "summary": "Get Fleet Time Diff Mains",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "minutes",
+            "schema": { "title": "Minutes", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "object" } }
+            }
+          }
+        },
+        "description": "Provide the rolling changes of a fleets members in the time period",
+        "tags": ["Stats"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/character_changes": {
+      "get": {
+        "operationId": "aacat_api_get_fleet_character_changes",
+        "summary": "Get Fleet Character Changes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "object" } }
+            }
+          }
+        },
+        "description": "Provide an overview of fleet members who have left/joined late",
+        "tags": ["Stats"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{character_id}/fleet_id": {
+      "get": {
+        "operationId": "aacat_api_get_fleet_id_from_character_id",
+        "summary": "Get Fleet Id From Character Id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "character_id",
+            "schema": { "title": "Character Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "integer" } }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          }
+        },
+        "description": "Get the fleet id a character is in.",
+        "tags": ["Search"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/details": {
+      "get": {
+        "operationId": "aacat_api_get_fleet_details",
+        "summary": "Get Fleet Details",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "object" } }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          }
+        },
+        "description": "Get the fleet settigns and MOTD",
+        "tags": ["Actions"],
+        "security": [{ "SessionAuth": [] }]
+      },
+      "put": {
+        "operationId": "aacat_api_put_fleet_details",
+        "summary": "Put Fleet Details",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "free_move",
+            "schema": { "title": "Free Move", "type": "boolean" },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "motd",
+            "schema": { "title": "Motd", "type": "string" },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "object" } }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          }
+        },
+        "description": "Update fleet Free move and MOTD",
+        "tags": ["Actions"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/kick/{character_id}": {
+      "delete": {
+        "operationId": "aacat_api_kick_fleet_member",
+        "summary": "Kick Fleet Member",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "character_id",
+            "schema": { "title": "Character Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          }
+        },
+        "description": "Kick character from fleet",
+        "tags": ["Actions"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/invite/{character_id}": {
+      "post": {
+        "operationId": "aacat_api_invite_fleet_member",
+        "summary": "Invite Fleet Member",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "character_id",
+            "schema": { "title": "Character Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          }
+        },
+        "description": "Invite a character to fleet",
+        "tags": ["Actions"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/move/{character_id}": {
+      "put": {
+        "operationId": "aacat_api_move_fleet_member",
+        "summary": "Move Fleet Member",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "character_id",
+            "schema": { "title": "Character Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "role",
+            "schema": {
+              "enum": ["fleet_commander", "wing_commander", "squad_commander", "squad_member "],
+              "title": "FleetRoles",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "squad_id",
+            "schema": { "title": "Squad Id", "type": "integer" },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "wing_id",
+            "schema": { "title": "Wing Id", "type": "integer" },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          }
+        },
+        "description": "Move a character in fleet\n\nIf a character is moved to the `fleet_commander` role,\n**neither** `wing_id` or `squad_id` should be specified.\n\nIf a character is moved to the `wing_commander` role,\n**only** `wing_id` should be specified.\n\nIf a character is moved to the `squad_commander` role,\n**both** `wing_id` and `squad_id` should be specified.\n\nIf a character is moved to the `squad_member` role,\n**both** `wing_id` and `squad_id` should be specified.",
+        "tags": ["Actions"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/structure": {
+      "get": {
+        "operationId": "aacat_api_get_fleet_structure",
+        "summary": "Get Fleet Structure",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": { "200": { "description": "OK" } },
+        "description": "Get the fleet hierarchy",
+        "tags": ["Structure"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/wing": {
+      "post": {
+        "operationId": "aacat_api_create_wing",
+        "summary": "Create Wing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": { "200": { "description": "OK" } },
+        "description": "Create a wing in a fleet",
+        "tags": ["Structure"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/wing/{wing_id}": {
+      "delete": {
+        "operationId": "aacat_api_delete_wing",
+        "summary": "Delete Wing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "wing_id",
+            "schema": { "title": "Wing Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": { "200": { "description": "OK" } },
+        "description": "Delete a Wing in a fleet",
+        "tags": ["Structure"],
+        "security": [{ "SessionAuth": [] }]
+      },
+      "put": {
+        "operationId": "aacat_api_rename_wing",
+        "summary": "Rename Wing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "wing_id",
+            "schema": { "title": "Wing Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "schema": { "title": "Name", "type": "string" },
+            "required": true
+          }
+        ],
+        "responses": { "200": { "description": "OK" } },
+        "description": "Rename a Wing in a fleet",
+        "tags": ["Structure"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/wing/{wing_id}/squad": {
+      "post": {
+        "operationId": "aacat_api_create_squad",
+        "summary": "Create Squad",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "wing_id",
+            "schema": { "title": "Wing Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": { "200": { "description": "OK" } },
+        "description": "Create a wing in a fleet",
+        "tags": ["Structure"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/squad/{squad_id}": {
+      "delete": {
+        "operationId": "aacat_api_delete_squad",
+        "summary": "Delete Squad",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "squad_id",
+            "schema": { "title": "Squad Id", "type": "integer" },
+            "required": true
+          }
+        ],
+        "responses": { "200": { "description": "OK" } },
+        "description": "Delete a Squad in a fleet",
+        "tags": ["Structure"],
+        "security": [{ "SessionAuth": [] }]
+      },
+      "put": {
+        "operationId": "aacat_api_rename_squad",
+        "summary": "Rename Squad",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "squad_id",
+            "schema": { "title": "Squad Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "schema": { "title": "Name", "type": "string" },
+            "required": true
+          }
+        ],
+        "responses": { "200": { "description": "OK" } },
+        "description": "Rename a Wing in a fleet",
+        "tags": ["Structure"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EveName": {
+        "properties": {
+          "id": { "title": "Id", "type": "integer" },
+          "name": { "title": "Name", "type": "string" },
+          "cat": { "anyOf": [{ "type": "string" }, { "type": "null" }], "title": "Cat" }
+        },
+        "required": ["id", "name"],
+        "title": "EveName",
+        "type": "object"
+      },
+      "Character": {
+        "properties": {
+          "character_name": { "title": "Character Name", "type": "string" },
+          "character_id": { "title": "Character Id", "type": "integer" },
+          "corporation_id": { "title": "Corporation Id", "type": "integer" },
+          "corporation_name": { "title": "Corporation Name", "type": "string" },
+          "alliance_id": {
+            "anyOf": [{ "type": "integer" }, { "type": "null" }],
+            "title": "Alliance Id"
+          },
+          "alliance_name": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Alliance Name"
+          }
+        },
+        "required": ["character_name", "character_id", "corporation_id", "corporation_name"],
+        "title": "Character",
+        "type": "object"
+      },
+      "Snapshot": {
+        "properties": {
+          "time": { "format": "date-time", "title": "Time", "type": "string" },
+          "snapshot": {
+            "items": { "$ref": "#/components/schemas/SnapshotCharacter" },
+            "title": "Snapshot",
+            "type": "array"
+          }
+        },
+        "required": ["time", "snapshot"],
+        "title": "Snapshot",
+        "type": "object"
+      },
+      "SnapshotCharacter": {
+        "properties": {
+          "character": { "$ref": "#/components/schemas/Character" },
+          "main": { "anyOf": [{ "$ref": "#/components/schemas/Character" }, { "type": "null" }] },
+          "system": { "$ref": "#/components/schemas/EveName" },
+          "ship": { "$ref": "#/components/schemas/EveName" },
+          "role": { "title": "Role", "type": "string" },
+          "join_time": { "format": "date-time", "title": "Join Time", "type": "string" },
+          "distance": { "title": "Distance", "type": "integer" }
+        },
+        "required": ["character", "system", "ship", "role", "join_time", "distance"],
+        "title": "SnapshotCharacter",
+        "type": "object"
+      },
+      "FleetRoles": {
+        "enum": ["fleet_commander", "wing_commander", "squad_commander", "squad_member "],
+        "title": "FleetRoles",
+        "type": "string"
+      }
+    },
+    "securitySchemes": { "SessionAuth": { "type": "apiKey", "in": "cookie", "name": "sessionid" } }
+  },
+  "servers": []
+}

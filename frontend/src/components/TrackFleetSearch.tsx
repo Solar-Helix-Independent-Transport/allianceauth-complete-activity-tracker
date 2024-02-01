@@ -1,16 +1,17 @@
 import { Cat } from "../api/Cat";
 import TrackFleetSelect from "./TrackFleetSelect";
 import { useQuery } from "@tanstack/react-query";
-import cookies from "js-cookies";
+import Cookies from "js-cookie";
 import { useState } from "react";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 
 const performTrackFleetRequest = async (characterID: number) => {
   console.log("performTrackFleetRequest");
+  const csrf = Cookies.get("csrftoken");
   const api = new Cat();
   const response = await api.aacatApiTrackCharacter(characterID, {
-    headers: { "X-Csrftoken": cookies.getItem("csrftoken") },
+    headers: { "X-Csrftoken": csrf ? csrf : "" },
   });
   console.log(response);
   return response.data;

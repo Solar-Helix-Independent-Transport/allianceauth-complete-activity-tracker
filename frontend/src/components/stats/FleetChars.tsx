@@ -1,4 +1,5 @@
-import { Cat } from "../api/Cat";
+// @ts-nocheck
+import { Cat } from "../../api/Cat";
 import { useQuery } from "@tanstack/react-query";
 import cookies from "js-cookies";
 import Card from "react-bootstrap/Card";

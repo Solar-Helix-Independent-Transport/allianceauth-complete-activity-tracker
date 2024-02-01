@@ -1,38 +1,30 @@
-import cookies from "js-cookies";
+import { Cat } from "../api/Cat";
+import { Character } from "../api/data-contracts";
+import Cookies from "js-cookie";
 import AsyncSelect from "react-select/async";
 
-const performCharacterSearchRequest = (searchText: string) => {
-  console.log("performCharacterSearchRequest");
-  console.log(cookies.getItem("csrftoken"));
-  const response = fetch(
-    `cat/api/search/auth/character/?search_text=${searchText ? searchText : "a"}`,
-    {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-Csrftoken": cookies.getItem("csrftoken"),
-      },
-    }
-  )
-    .then((res) => res.json())
-    .then((data) =>
-      data?.map(
-        (d: {
-          character_name: string;
-          corporation_name: string;
-          alliance_name: string;
-          character_id: number;
-        }) => {
-          return {
-            label: `${d.character_name} (${d.corporation_name}) [${d.alliance_name}]`,
-            value: d.character_id,
-          };
-        }
-      )
-    );
+type ValueType = { label: string; value: number };
 
-  return response;
+const performCharacterSearchRequest = async (searchText: string) => {
+  console.log("performCharacterSearchRequest");
+  const csrf = Cookies.get("csrftoken");
+  const api = new Cat();
+  const response = await api.aacatApiCharacterSearch(
+    {
+      search_text: searchText,
+      limit: 10,
+    },
+    {
+      headers: { "X-Csrftoken": csrf ? csrf : "" },
+    }
+  );
+
+  return response.data?.map((d: Character) => {
+    return {
+      label: `${d.character_name} (${d.corporation_name}) [${d.alliance_name}]`,
+      value: d.character_id,
+    };
+  });
 };
 
 const TrackFleetSelect = ({
@@ -51,8 +43,10 @@ const TrackFleetSelect = ({
     return performCharacterSearchRequest(inputValue);
   };
 
-  const processOnChange = (newValue: unknown) => {
-    setCharacter(newValue.value);
+  const processOnChange = (newValue: ValueType | null) => {
+    if (newValue) {
+      setCharacter(newValue.value);
+    }
   };
 
   return (

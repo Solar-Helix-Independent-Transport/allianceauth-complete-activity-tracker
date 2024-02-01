@@ -13,8 +13,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <Routes>
-          <Route path="r" element={<FleetSelect />} />
-          <Route path="r/:fleetID/" element={<FleetPage />}>
+          <Route path="cat" element={<FleetSelect />} />
+          <Route path="cat/:fleetID/" element={<FleetPage />}>
             <Route index element={<Navigate to="structure" replace />} />
             <Route path="structure" element={<FleetStructure />} />
             <Route path="status" element={<FleetStatus />} />

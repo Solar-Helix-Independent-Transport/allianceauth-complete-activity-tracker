@@ -1,3 +1,4 @@
+import { Character } from "../api/data-contracts";
 import React from "react";
 import { Card } from "react-bootstrap";
 
@@ -10,7 +11,7 @@ export declare interface PortraitCardProps {
   isFetching?: boolean;
   headerIcon?: string;
   roundedImages?: string;
-  character: undefined; //todo type from api?
+  character: Character;
 }
 
 export function PortraitCard({ children, character, style, bg, border }: PortraitCardProps) {

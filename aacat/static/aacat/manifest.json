@@ -1,0 +1,20 @@
+{
+  "_@libs-paG_-_fC.js": {
+    "file": "assets/@libs-paG_-_fC.js"
+  },
+  "_@react-router-1-L6KkP2.js": {
+    "file": "assets/@react-router-1-L6KkP2.js",
+    "imports": [
+      "_@libs-paG_-_fC.js"
+    ]
+  },
+  "index.html": {
+    "file": "assets/index-VDD013cY.js",
+    "imports": [
+      "_@libs-paG_-_fC.js",
+      "_@react-router-1-L6KkP2.js"
+    ],
+    "isEntry": true,
+    "src": "index.html"
+  }
+}

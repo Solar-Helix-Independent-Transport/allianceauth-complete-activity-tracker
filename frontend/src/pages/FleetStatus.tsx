@@ -1,5 +1,5 @@
-import FleetCharacters from "../components/FleetChars";
-import FleetComp from "../components/FleetComp";
+import FleetCharacters from "../components/stats/FleetChars";
+import FleetComp from "../components/structure/FleetComp";
 
 const FleetStatus = () => {
   return (

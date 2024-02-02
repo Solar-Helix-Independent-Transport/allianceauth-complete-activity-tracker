@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { Cat } from "../../api/Cat";
 import { useQuery } from "@tanstack/react-query";
-import cookies from "js-cookies";
+import Cookies from "js-cookie";
 import Card from "react-bootstrap/Card";
 import { useParams } from "react-router-dom";
 
@@ -9,7 +9,7 @@ const getFleetCharacterChanges = async (fleetID: number) => {
   console.log("getFleetComp");
   const api = new Cat();
   const response = await api.aacatApiGetFleetCharacterChanges(fleetID, {
-    headers: { "X-Csrftoken": cookies.getItem("csrftoken") },
+    headers: { "X-Csrftoken": cookies.get("csrftoken") },
   });
   console.log(response);
 

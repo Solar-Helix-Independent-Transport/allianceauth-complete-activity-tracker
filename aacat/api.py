@@ -26,7 +26,7 @@ api = NinjaAPI(title="CAT API", version="0.0.1",
 
 @api.post(
     "/search/system/",
-    response={200: List[schema.EveName]},
+    response={200: List[schema.EveName], **schema.error_responses},
     tags=["Search"]
 )
 def system_search(request, search_text: str, limit: int = 10):
@@ -38,7 +38,7 @@ def system_search(request, search_text: str, limit: int = 10):
 
 @api.post(
     "/search/constellation/",
-    response={200: List[schema.EveName]},
+    response={200: List[schema.EveName], **schema.error_responses},
     tags=["Search"]
 )
 def constellation_search(request, search_text: str, limit: int = 10):
@@ -50,7 +50,7 @@ def constellation_search(request, search_text: str, limit: int = 10):
 
 @api.post(
     "/search/region/",
-    response={200: List[schema.EveName]},
+    response={200: List[schema.EveName], **schema.error_responses},
     tags=["Search"]
 )
 def region_search(request, search_text: str, limit: int = 10):
@@ -62,7 +62,7 @@ def region_search(request, search_text: str, limit: int = 10):
 
 @api.post(
     "/search/auth/group/",
-    response={200: List},
+    response={200: List[schema.EveName], **schema.error_responses},
     tags=["Search"]
 )
 def group_search(request, search_text: str, limit: int = 10):
@@ -74,7 +74,7 @@ def group_search(request, search_text: str, limit: int = 10):
 
 @api.post(
     "/search/auth/character/",
-    response={200: List[schema.Character]},
+    response={200: List[schema.Character], **schema.error_responses},
     tags=["Search"]
 )
 def character_search(request, search_text: str, limit: int = 10):
@@ -86,7 +86,7 @@ def character_search(request, search_text: str, limit: int = 10):
 
 @api.post(
     "/fleets/track",
-    response={200: List[schema.Character], 403: str},
+    response={200: List[schema.Character], **schema.error_responses},
     tags=["Tracking"]
 )
 def track_me(request):
@@ -107,7 +107,7 @@ def track_me(request):
 
 @api.post(
     "/fleets/{character_id}/track",
-    response={200: schema.Character, 403: str},
+    response={200: schema.Character, **schema.error_responses},
     tags=["Tracking"]
 )
 def track_character(request, character_id: int):
@@ -124,7 +124,7 @@ def track_character(request, character_id: int):
 
 @api.post(
     "/fleets/{fleet_id}/end",
-    response={200: list, 403: str},
+    response={200: list[str], **schema.error_responses},
     tags=["Tracking"]
 )
 def end_fleet(request, fleet_id: int):
@@ -144,7 +144,7 @@ def end_fleet(request, fleet_id: int):
 
 @api.post(
     "/fleets/{fleet_id}/restart",
-    response={200: list, 403: str},
+    response={200: list[str], **schema.error_responses},
     tags=["Tracking"]
 )
 def restart_fleet_tasks(request, fleet_id: int):
@@ -164,7 +164,7 @@ def restart_fleet_tasks(request, fleet_id: int):
 
 @api.get(
     "/fleets/active/",
-    response={200: List},
+    response={200: List[schema.FleetDetails], **schema.error_responses},
     tags=["Stats"]
 )
 def get_fleets_active(request, limit: int = 50):
@@ -174,18 +174,12 @@ def get_fleets_active(request, limit: int = 50):
     if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
-    return models.Fleet.objects.filter(end_time__isnull=True).values(
-        "name",
-        "eve_fleet_id",
-        "boss__character_name",
-        "boss__character_id",
-        "last_update"
-    )[:limit]
+    return models.Fleet.objects.filter(end_time__isnull=True)[:limit]
 
 
 @api.get(
     "/fleets/recent/",
-    response={200: List},
+    response={200: List[schema.FleetDetails], **schema.error_responses},
     tags=["Stats"]
 )
 def get_fleets_recent(request, days_look_back: int = 14):
@@ -196,20 +190,12 @@ def get_fleets_recent(request, days_look_back: int = 14):
         return 403, "No Perms"
 
     _start = timezone.now() - timedelta(days=days_look_back)
-    return models.Fleet.objects.filter(start_time__gte=_start, end_time__isnull=False).values(
-        "name",
-        "eve_fleet_id",
-        "boss__character_name",
-        "boss__character_id",
-        "start_time",
-        "end_time",
-        "last_update"
-    )
+    return models.Fleet.objects.filter(start_time__gte=_start, end_time__isnull=False)
 
 
 @api.get(
     "/fleets/{fleet_id}/snapshot",
-    response={200: schema.Snapshot},
+    response={200: schema.Snapshot, **schema.error_responses},
     tags=["Stats"]
 )
 def get_fleet_recent_snapshot(request, fleet_id: int):
@@ -253,7 +239,7 @@ def get_fleet_recent_snapshot(request, fleet_id: int):
 
 @api.get(
     "/fleets/{fleet_id}/stats",
-    response={200: list},
+    response={200: list, **schema.error_responses},
     tags=["Stats"]
 )
 def get_fleet_stats(request, fleet_id: int):
@@ -585,7 +571,7 @@ def kick_fleet_member(request, fleet_id: int, character_id: int):
 
 @api.post(
     "/fleets/{fleet_id}/invite/{character_id}",
-    response={200: str, 403: str},
+    response={200: str, **schema.error_responses},
     tags=["Actions"]
 )
 def invite_fleet_member(request, fleet_id: int, character_id: int):
@@ -613,15 +599,22 @@ class FleetRoles(TextChoices):
     FLEET_COMMANDER = "fleet_commander"
     WING_COMMANDER = "wing_commander"
     SQUAD_COMMANDER = "squad_commander"
-    SQUAD_MEMBER = "squad_member "
+    SQUAD_MEMBER = "squad_member"
 
 
 @api.put(
     "/fleets/{fleet_id}/move/{character_id}",
-    response={200: str, 403: str, 400: str},
+    response={200: str, **schema.error_responses},
     tags=["Actions"]
 )
-def move_fleet_member(request, fleet_id: int, character_id: int, role: FleetRoles, squad_id: int = None, wing_id: int = None):
+def move_fleet_member(
+    request,
+    fleet_id: int,
+    character_id: int,
+    role: FleetRoles,
+    squad_id: int = None,
+    wing_id: int = None
+):
     """
         Move a character in fleet
 
@@ -640,7 +633,7 @@ def move_fleet_member(request, fleet_id: int, character_id: int, role: FleetRole
     if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
-    if role == FleetRoles.FLEET_COMMANDER and not squad_id is None and not wing_id is None:
+    if role == FleetRoles.FLEET_COMMANDER and squad_id is not None and wing_id is not None:
         return 401, f"{FleetRoles.SQUAD_COMMANDER} requires neither squad_id and wing_id"
 
     if role == FleetRoles.SQUAD_COMMANDER and (squad_id is None or wing_id is None):
@@ -652,37 +645,140 @@ def move_fleet_member(request, fleet_id: int, character_id: int, role: FleetRole
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
     token = Token.get_token(fleet.boss.character_id, [
                             'esi-fleets.write_fleet.v1'])
-    join = providers.esi.client.Fleets.post_fleets_fleet_id_members(
+    movement = {
+        "role": role,
+        "squad_id": None,
+        "wing_id": None
+    }
+    if role in (FleetRoles.SQUAD_MEMBER, FleetRoles.SQUAD_COMMANDER):
+        movement["squad_id"] = squad_id
+        movement["wing_id"] = wing_id
+    elif role == FleetRoles.WING_COMMANDER:
+        movement["wing_id"] = wing_id
+
+    move = providers.esi.client.Fleets.put_fleets_fleet_id_members_member_id_movement(
         fleet_id=fleet_id,
-        invitation={
-            "character_id": character_id,
-            "role": "squad_member"
-        },
+        member_id=character_id,
+        movement=movement,
         token=token.valid_access_token()
     ).result()
-    return f"sent Invite to {character_id} from {fleet_id} aka {token.character_name}"
+
+    return f"{character_id} Moved f:{fleet_id} r:{role} w:{wing_id} s:{squad_id}"
 
 
 @api.get(
     "/fleets/{fleet_id}/structure",
-    # response={200: any, 403: str},
+    response={200: schema.FleetStructure, **schema.error_responses},
     tags=["Structure"]
 )
 def get_fleet_structure(request, fleet_id: int):
     """
         Get the fleet hierarchy
+        TODO Refactor this is way too big
+        TODO can prob share logic with the snapshot task
     """
     if not request.user.has_perm('aacat.edit_fleets'):
         return 403, "No Perms"
 
-    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+    fleet = models.Fleet.objects.filter(eve_fleet_id=fleet_id).last()
     token = Token.get_token(fleet.boss.character_id, [
                             'esi-fleets.read_fleet.v1'])
-    fleet = providers.esi.client.Fleets.get_fleets_fleet_id_wings(
+
+    fleet_wing_data = providers.esi.client.Fleets.get_fleets_fleet_id_wings(
         fleet_id=fleet_id,
         token=token.valid_access_token()
     ).result()
-    return fleet
+
+    fleet_member_data = providers.esi.client.Fleets.get_fleets_fleet_id_members(
+        fleet_id=fleet_id,
+        token=token.valid_access_token()
+    ).result()
+
+    fleet_structure = {
+        "fleet_boss": fleet.boss,
+        "commander": None,
+        "wings": {}
+    }
+
+    for wing in fleet_wing_data:
+        w = wing.get("id")
+
+        if w not in fleet_structure["wings"]:
+            fleet_structure["wings"][w] = {
+                "wing_id": w,
+                "name": wing.get("name"),
+                "commander": None,
+                "squads": {}
+            }
+        for squad in wing.get("squads"):
+            s = squad.get("id")
+
+            if s not in fleet_structure["wings"][w]["squads"]:
+                fleet_structure["wings"][w]["squads"][s] = {
+                    "squad_id": s,
+                    "name": squad.get("name"),
+                    "commander": None,
+                    "characters": []
+                }
+
+    max_date = models.FleetEvent.objects.filter(
+        fleet=fleet).aggregate(max_date=Max("time"))["max_date"]
+    latest_events = models.FleetEvent.objects.filter(
+        fleet=fleet, time=max_date).select_related(
+            "solar_system",
+            "ship",
+            "character_name",
+            "character_name__character_ownership__user__profile__main_character")
+
+    chars = {}
+    for e in latest_events:
+        main_char = None
+        try:
+            main_char = e.character_name.character_ownership.user.profile.main_character
+        except Exception:
+            pass
+
+        chars[e.character_id] = {
+            "character": e.character_name,
+            "main": main_char,
+            "distance": e.distance_from_fc,
+            "system": {
+                "id": e.solar_system.id,
+                "name": e.solar_system.name,
+                "cat": "SolarSystem"
+            },
+            "ship": {
+                "id": e.ship.id,
+                "name": e.ship.name,
+            },
+            "role": e.role,
+            "join_time": e.join_time
+        }
+
+    for e in fleet_member_data:
+        if e.get("character_id") in chars:
+            r = e.get("role")
+            if r == FleetRoles.SQUAD_MEMBER:
+                fleet_structure["wings"][w]["squads"][s]["characters"].append(
+                    chars[e.get("character_id")])
+            elif r == FleetRoles.FLEET_COMMANDER:
+                fleet_structure["commander"] = chars[e.get("character_id")]
+            elif r == FleetRoles.WING_COMMANDER:
+                fleet_structure["wings"][w]["commander"] = chars[e.get(
+                    "character_id")]
+            elif r == FleetRoles.SQUAD_COMMANDER:
+                fleet_structure["wings"][w]["squads"][s]["commander"] = chars[e.get(
+                    "character_id")]
+        else:
+            logger.warning(f"No event for {e}")
+
+    # DictToList
+    for _, w in fleet_structure["wings"].items():
+        w["squads"] = list(w["squads"].values())
+
+    fleet_structure["wings"] = list(fleet_structure["wings"].values())
+
+    return fleet_structure
 
 
 @api.post(

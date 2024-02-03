@@ -1,25 +1,22 @@
-import { Cat } from "../api/Cat";
+import { getCatApi } from "../api/Api";
+import { components } from "../api/CatApi";
 import CloseFleetButton from "./buttons/CloseFleet";
 import { useQuery } from "@tanstack/react-query";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 import { LinkContainer } from "react-router-bootstrap";
 
-declare interface FleetProps {
-  name: string;
-  eve_fleet_id: number;
-  boss__character_id: number;
-  last_update: string;
+async function getActiveFleetList() {
+  const { GET } = getCatApi();
+
+  const { data, error } = await GET("/cat/api/fleets/active/");
+  if (error) {
+    console.log(error);
+  } else {
+    console.log(data);
+    return data;
+  }
 }
-
-const getActiveFleetList = async () => {
-  console.log("getActiveFleetList");
-  const api = new Cat();
-
-  const response = await api.aacatApiGetFleetsActive();
-  console.log(response);
-  return response.data;
-};
 
 const ActiveFleetList = () => {
   const { data } = useQuery({
@@ -29,12 +26,12 @@ const ActiveFleetList = () => {
   });
 
   console.log(data);
-  return data?.map((fleet: FleetProps) => {
+  return data?.map((fleet: components["schemas"]["FleetDetails"]) => {
     return (
       <Card style={{ width: "24rem" }} className="m-4">
         <Card.Img
           variant="top"
-          src={`https://images.evetech.net/characters/${fleet.boss__character_id}/portrait?size=256`}
+          src={`https://images.evetech.net/characters/${fleet.boss.character_id}/portrait?size=256`}
         />
         <Card.Body>
           <Card.Title>{fleet?.name}</Card.Title>

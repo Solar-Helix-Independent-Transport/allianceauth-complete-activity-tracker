@@ -863,13 +863,25 @@
             "name": "fleet_id",
             "schema": { "title": "Fleet Id", "type": "integer" },
             "required": true
+          },
+          {
+            "in": "query",
+            "name": "ratio_cutoff",
+            "schema": { "default": 0.9, "title": "Ratio Cutoff", "type": "number" },
+            "required": false
           }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
-              "application/json": { "schema": { "title": "Response", "type": "object" } }
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/CountResponse" },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
             }
           }
         },
@@ -1385,8 +1397,6 @@
       },
       "Character": {
         "properties": {
-          "character_name": { "title": "Character Name", "type": "string" },
-          "character_id": { "title": "Character Id", "type": "integer" },
           "corporation_id": { "title": "Corporation Id", "type": "integer" },
           "corporation_name": { "title": "Corporation Name", "type": "string" },
           "alliance_id": {
@@ -1396,9 +1406,11 @@
           "alliance_name": {
             "anyOf": [{ "type": "string" }, { "type": "null" }],
             "title": "Alliance Name"
-          }
+          },
+          "character_name": { "title": "Character Name", "type": "string" },
+          "character_id": { "title": "Character Id", "type": "integer" }
         },
-        "required": ["character_name", "character_id", "corporation_id", "corporation_name"],
+        "required": ["corporation_id", "corporation_name", "character_name", "character_id"],
         "title": "Character",
         "type": "object"
       },
@@ -1447,6 +1459,32 @@
         },
         "required": ["character", "system", "ship", "role", "join_time"],
         "title": "SnapshotCharacter",
+        "type": "object"
+      },
+      "CharacterCount": {
+        "properties": {
+          "character": { "$ref": "#/components/schemas/Character" },
+          "count": { "title": "Count", "type": "integer" }
+        },
+        "required": ["character", "count"],
+        "title": "CharacterCount",
+        "type": "object"
+      },
+      "CountResponse": {
+        "properties": {
+          "name": { "title": "Name", "type": "string" },
+          "total": { "title": "Total", "type": "integer" },
+          "characters": {
+            "anyOf": [
+              { "items": { "$ref": "#/components/schemas/CharacterCount" }, "type": "array" },
+              { "type": "null" }
+            ],
+            "default": [],
+            "title": "Characters"
+          }
+        },
+        "required": ["name", "total"],
+        "title": "CountResponse",
         "type": "object"
       },
       "FleetRoles": {

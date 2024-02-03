@@ -219,10 +219,6 @@ export interface components {
     };
     /** Character */
     Character: {
-      /** Character Name */
-      character_name: string;
-      /** Character Id */
-      character_id: number;
       /** Corporation Id */
       corporation_id: number;
       /** Corporation Name */
@@ -231,6 +227,10 @@ export interface components {
       alliance_id?: number | null;
       /** Alliance Name */
       alliance_name?: string | null;
+      /** Character Name */
+      character_name: string;
+      /** Character Id */
+      character_id: number;
     };
     /** FleetDetails */
     FleetDetails: {
@@ -280,6 +280,24 @@ export interface components {
        * @default -2
        */
       distance?: number | null;
+    };
+    /** CharacterCount */
+    CharacterCount: {
+      character: components["schemas"]["Character"];
+      /** Count */
+      count: number;
+    };
+    /** CountResponse */
+    CountResponse: {
+      /** Name */
+      name: string;
+      /** Total */
+      total: number;
+      /**
+       * Characters
+       * @default []
+       */
+      characters?: components["schemas"]["CharacterCount"][] | null;
     };
     /**
      * FleetRoles
@@ -1009,6 +1027,9 @@ export interface operations {
    */
   aacat_api_get_fleet_character_changes: {
     parameters: {
+      query?: {
+        ratio_cutoff?: number;
+      };
       path: {
         fleet_id: number;
       };
@@ -1017,7 +1038,7 @@ export interface operations {
       /** @description OK */
       200: {
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["CountResponse"][];
         };
       };
     };

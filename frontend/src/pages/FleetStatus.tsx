@@ -3,7 +3,7 @@ import FleetComp from "../components/structure/FleetComp";
 
 const FleetStatus = () => {
   return (
-    <div className="d-flex">
+    <div className="d-flex flex-wrap">
       <FleetComp />
       <FleetCharacters />
     </div>

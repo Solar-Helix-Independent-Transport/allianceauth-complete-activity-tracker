@@ -14,20 +14,16 @@ error_responses = {
 }
 
 
-class Character(Schema):
-    character_name: str
-    character_id: int
-    corporation_id: int
-    corporation_name: str
-    alliance_id: Optional[int] = None
-    alliance_name: Optional[str] = None
-
-
 class Corporation(Schema):
     corporation_id: int
     corporation_name: str
     alliance_id: Optional[int] = None
     alliance_name: Optional[str] = None
+
+
+class Character(Corporation):
+    character_name: str
+    character_id: int
 
 
 class EveName(Schema):
@@ -40,6 +36,17 @@ class EveName(Schema):
 class ValueLabel(Schema):
     value: Union[str, int, float, bool]
     label: str
+
+
+class CharacterCount(Schema):
+    character: Character
+    count: int
+
+
+class CountResponse(Schema):
+    name: str
+    total: int
+    characters: Optional[list[CharacterCount]] = []
 
 
 class FleetDetails(Schema):

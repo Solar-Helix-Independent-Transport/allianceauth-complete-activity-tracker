@@ -396,10 +396,14 @@ def get_fleet_time_diff_mains(request, fleet_id: int, minutes: int):
 
 @api.get(
     "/fleets/{fleet_id}/character_changes",
-    response={200: dict},
+    response={200: List[schema.CountResponse]},
     tags=["Stats"]
 )
-def get_fleet_character_changes(request, fleet_id: int):
+def get_fleet_character_changes(
+    request,
+    fleet_id: int,
+    ratio_cutoff: float = 0.90
+):
     """
         Provide an overview of fleet members who have left/joined late
     """
@@ -415,11 +419,6 @@ def get_fleet_character_changes(request, fleet_id: int):
         fleet=fleet, time=max_date)
 
     current = []
-    output = {
-        "current": [],
-        "joiners": [],
-        "leavers": []
-    }
 
     current_chars = latest_events.values(
         name=F(
@@ -442,24 +441,63 @@ def get_fleet_character_changes(request, fleet_id: int):
     char_events = models.FleetEvent.objects.filter(
         fleet=fleet
     ).values(
-        name=F(
+        main_character_name=F(
             "character_name__character_ownership__user__profile__main_character__character_name")
     ).annotate(
-        count=Count("time", distinct=True)
+        count=Count("time", distinct=True),
+        main_character_id=F(
+            "character_name__character_ownership__user__profile__main_character__character_id"),
+        main_corporation_name=F(
+            "character_name__character_ownership__user__profile__main_character__corporation_name"),
+        main_corporation_id=F(
+            "character_name__character_ownership__user__profile__main_character__corporation_id"),
+        main_alliance_name=F(
+            "character_name__character_ownership__user__profile__main_character__alliance_name"),
+        main_alliance_id=F(
+            "character_name__character_ownership__user__profile__main_character__alliance_id"),
     )
-    cuttoff = total_events * 0.90
+
+    output = {
+        "current": {
+            "name": "Current",
+            "total": total_events,
+            "characters": []
+        },
+        "joiners": {
+            "name": "Joiners",
+            "total": total_events,
+            "characters": []
+        },
+        "leavers": {
+            "name": "Leavers",
+            "total": total_events,
+            "characters": []
+        },
+    }
+
+    cutoff = total_events * ratio_cutoff
 
     for c in char_events:
-        if c['name'] in current:
-            if c['count'] > cuttoff:
-                output['current'].append(c)
+        character_event = {
+            "character": {
+                "character_name": c.get("main_character_name"),
+                "character_id": c.get("main_character_id"),
+                "corporation_name": c.get("main_corporation_name"),
+                "corporation_id": c.get("main_corporation_id"),
+                "alliance_name": c.get("main_alliance_name", None),
+                "alliance_id": c.get("main_alliance_id", None),
+            },
+            "count": c.get("count", 0)
+        }
+        if c['main_character_name'] in current:
+            if c['count'] > cutoff:
+                output['current']["characters"].append(character_event)
             else:
-                output['joiners'].append(c)
+                output['joiners']["characters"].append(character_event)
         else:
-            output['leavers'].append(c)
+            output['leavers']["characters"].append(character_event)
 
-    output['total_events'] = total_events
-    return output
+    return list(output.values())
 
 
 @api.get(

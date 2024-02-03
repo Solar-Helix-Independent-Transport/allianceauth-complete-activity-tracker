@@ -1,21 +1,24 @@
-// @ts-nocheck
-import { Cat } from "../../api/Cat";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { getCatApi } from "../../api/Api";
 import { useQuery } from "@tanstack/react-query";
-import Cookies from "js-cookie";
 import Card from "react-bootstrap/Card";
 import { useParams } from "react-router-dom";
 
 const getFleetComp = async (fleetID: number) => {
   console.log("getFleetComp");
-  const csrf = Cookies.get("csrftoken");
+  const { GET } = getCatApi();
 
-  const api = new Cat();
-  const response = await api.aacatApiGetFleetStats(fleetID, {
-    headers: { "X-Csrftoken": csrf ? csrf : "" },
+  const { data, error } = await GET("/cat/api/fleets/{fleet_id}/stats", {
+    params: {
+      path: { fleet_id: fleetID },
+    },
   });
-  console.log(response);
-
-  return response.data;
+  if (data) {
+    return data;
+  } else {
+    console.log(error);
+    return [];
+  }
 };
 
 const FleetComp = () => {
@@ -23,7 +26,7 @@ const FleetComp = () => {
 
   const { data } = useQuery({
     queryKey: ["getFleetComp", fleetID],
-    queryFn: async () => await getFleetComp(+fleetID),
+    queryFn: async () => await getFleetComp(fleetID ? +fleetID : 0),
     refetchInterval: 5000,
   });
 
@@ -33,7 +36,7 @@ const FleetComp = () => {
       <Card.Body>
         <Card.Title>Fleet Comp</Card.Title>
         <hr />
-        {data?.map((ship: unknown) => {
+        {data?.map((ship: any) => {
           return (
             <Card.Text>
               <div className="d-flex flex-row justify-content-between">

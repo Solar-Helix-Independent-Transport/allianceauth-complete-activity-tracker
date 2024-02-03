@@ -1,20 +1,24 @@
-import { Cat } from "../api/Cat";
+import { getCatApi } from "../api/Api";
 import TrackFleetSelect from "./TrackFleetSelect";
 import { useQuery } from "@tanstack/react-query";
-import Cookies from "js-cookie";
 import { useState } from "react";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 
 const performTrackFleetRequest = async (characterID: number) => {
-  console.log("performTrackFleetRequest");
-  const csrf = Cookies.get("csrftoken");
-  const api = new Cat();
-  const response = await api.aacatApiTrackCharacter(characterID, {
-    headers: { "X-Csrftoken": csrf ? csrf : "" },
+  const { POST } = getCatApi();
+
+  const { data, error } = await POST("/cat/api/fleets/{character_id}/track", {
+    params: {
+      path: { character_id: characterID },
+    },
   });
-  console.log(response);
-  return response.data;
+  if (error) {
+    console.log(error);
+  } else {
+    console.log(data);
+    return data;
+  }
 };
 //performTrackFleetRequest(inputValue);
 const TrackFleetSearch = () => {
@@ -46,7 +50,7 @@ const TrackFleetSearch = () => {
       </Card.Body>
       <Card.Footer className="text-muted">
         {isFetching
-          ? `Sending request to track: ${data?.character_name}`
+          ? `Sending request to track: ${character}`
           : data
           ? `Requested tracking of: ${data?.character_name}`
           : `state: ${status}`}

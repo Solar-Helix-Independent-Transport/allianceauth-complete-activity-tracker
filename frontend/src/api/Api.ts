@@ -7,6 +7,6 @@ export const getCatApi = () => {
 
   return createClient<paths>({
     baseUrl: "/",
-    headers: { "X-Csrftoken": csrf ? csrf : "" },
+    headers: { "x-csrftoken": csrf ? csrf : "" },
   });
 };

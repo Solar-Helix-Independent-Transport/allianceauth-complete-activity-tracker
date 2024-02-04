@@ -15,7 +15,7 @@ async function getFleetStructure(fleetID: number) {
   if (error) {
     console.log(error);
   } else {
-    console.log(data);
+    console.log("COMP:", data);
     return data;
   }
 }

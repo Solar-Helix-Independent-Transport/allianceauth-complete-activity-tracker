@@ -796,6 +796,8 @@ def get_fleet_structure(request, fleet_id: int):
     for e in fleet_member_data:
         if e.get("character_id") in chars:
             r = e.get("role")
+            w = e.get("wing_id")
+            s = e.get("squad_id")
             if r == FleetRoles.SQUAD_MEMBER:
                 fleet_structure["wings"][w]["squads"][s]["characters"].append(
                     chars[e.get("character_id")])
@@ -805,8 +807,9 @@ def get_fleet_structure(request, fleet_id: int):
                 fleet_structure["wings"][w]["commander"] = chars[e.get(
                     "character_id")]
             elif r == FleetRoles.SQUAD_COMMANDER:
-                fleet_structure["wings"][w]["squads"][s]["commander"] = chars[e.get(
-                    "character_id")]
+                fleet_structure["wings"][w]["squads"][s]["commander"] = chars[
+                    e.get("character_id")
+                ]
         else:
             logger.warning(f"No event for {e}")
 

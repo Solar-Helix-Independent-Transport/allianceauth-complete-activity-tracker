@@ -6,7 +6,7 @@ from .api import api
 app_name = 'aacat'
 
 urlpatterns = [
-    re_path(r'^$', views.react_main, name="index"),
     re_path(r'^api/', api.urls),
     re_path(r'^char/add/$', views.add_char, name='add_char'),
+    re_path(r'^', views.react_main, name="index"),
 ]

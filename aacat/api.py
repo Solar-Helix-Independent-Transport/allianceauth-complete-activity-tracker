@@ -694,7 +694,7 @@ def move_fleet_member(
     elif role == FleetRoles.WING_COMMANDER:
         movement["wing_id"] = wing_id
 
-    move = providers.esi.client.Fleets.put_fleets_fleet_id_members_member_id_movement(
+    move = providers.esi.client.Fleets.put_fleets_fleet_id_members_member_id(
         fleet_id=fleet_id,
         member_id=character_id,
         movement=movement,

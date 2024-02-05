@@ -89,7 +89,11 @@ export function FleetMember({ character, icon, index, updating }: FleetMemberPro
               )}
             </>
           </span>
-          <EditFleetObjectCollapse id={`edit-${id}`} icon={"fa-bars"}>
+          <EditFleetObjectCollapse
+            variant={undefined}
+            id={`edit-${id}`}
+            icon={"fa-ellipsis-vertical"}
+          >
             <div className="d-flex flex-row me-2">
               <Button
                 variant={"danger"}

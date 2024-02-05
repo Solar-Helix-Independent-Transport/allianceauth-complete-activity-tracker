@@ -12,7 +12,7 @@ export function EditFleetObjectCollapse({
   id,
   children,
   icon = "fa-edit",
-  variant = "secondary",
+  variant = "",
 }: React.PropsWithChildren<EditFleetObjectProps>) {
   const [open, setOpen] = useState(false);
 

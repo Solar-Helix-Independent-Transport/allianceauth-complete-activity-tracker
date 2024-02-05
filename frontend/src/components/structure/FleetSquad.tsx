@@ -1,11 +1,13 @@
 import { getCatApi } from "../../api/Api";
 import { components, operations } from "../../api/CatApi";
 import { FleetMember } from "./FleetMember";
-import { EditFleetObject } from "./utils/EditFleetObject";
+import { EditFleetObjectCollapse } from "./utils/EditFleetObjectCollapse";
 import { FleetDroppable } from "./utils/FleetDroppable";
 import { useState } from "react";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
+import OverlayTrigger from "react-bootstrap/esm/OverlayTrigger";
+import Tooltip from "react-bootstrap/esm/Tooltip";
 import { useParams } from "react-router-dom";
 
 export declare interface SquadProps {
@@ -35,6 +37,22 @@ async function renameSquad(fleetID: number, squadID: number, newName: string) {
   }
 }
 
+async function delSquad(fleet_id: number, squadID: number) {
+  const { DELETE } = getCatApi();
+
+  const { data, error } = await DELETE("/cat/api/fleets/{fleet_id}/squad/{squad_id}", {
+    params: {
+      path: { fleet_id: fleet_id, squad_id: squadID },
+    },
+  });
+
+  if (error) {
+    console.log(error);
+  } else {
+    console.log(data);
+  }
+}
+
 export function FleetSquad({ squad, wing_id, updating }: SquadProps) {
   const id = `${wing_id}-${squad.squad_id}`;
   const [newName, setName] = useState<string>(squad.name ? squad.name : "Unknown");
@@ -52,7 +70,7 @@ export function FleetSquad({ squad, wing_id, updating }: SquadProps) {
           {memberCount ? `${memberCount}` : "Empty"}
         </span>
         <div className="ms-auto">
-          <EditFleetObject id={`edit-${id}`} icon={"fa-bars"}>
+          <EditFleetObjectCollapse id={`edit-${id}`} icon={"fa-bars"}>
             <div className="d-flex flex-row mx-2">
               <Form.Control
                 size="sm"
@@ -73,8 +91,25 @@ export function FleetSquad({ squad, wing_id, updating }: SquadProps) {
                   }`}
                 ></i>
               </Button>
+              {!memberCount && (
+                <OverlayTrigger
+                  placement={"left"}
+                  overlay={<Tooltip id={`tooltip-warp-${id}`}>Delete Squad</Tooltip>}
+                >
+                  <Button
+                    className="ms-2"
+                    variant={"danger"}
+                    size={"sm"}
+                    onClick={() => {
+                      delSquad(fleetID ? +fleetID : 0, squad.squad_id);
+                    }}
+                  >
+                    <i className={`fas fa-trash`}></i>
+                  </Button>
+                </OverlayTrigger>
+              )}
             </div>
-          </EditFleetObject>
+          </EditFleetObjectCollapse>
         </div>
       </div>
       <FleetDroppable id={`squad_commander-${id}`}>

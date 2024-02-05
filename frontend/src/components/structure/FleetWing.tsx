@@ -2,11 +2,13 @@ import { getCatApi } from "../../api/Api";
 import { components, operations } from "../../api/CatApi";
 import { FleetMember } from "./FleetMember";
 import { FleetSquad } from "./FleetSquad";
-import { EditFleetObject } from "./utils/EditFleetObject";
+import { EditFleetObjectCollapse } from "./utils/EditFleetObjectCollapse";
 import { FleetDroppable } from "./utils/FleetDroppable";
 import { useState } from "react";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
+import OverlayTrigger from "react-bootstrap/esm/OverlayTrigger";
+import Tooltip from "react-bootstrap/esm/Tooltip";
 import { useParams } from "react-router-dom";
 
 export declare interface WingProps {
@@ -35,17 +37,49 @@ async function renameWing(fleetID: number, wingID: number, newName: string) {
   }
 }
 
+async function addSquad(fleet_id: number, wingID: number) {
+  const { POST } = getCatApi();
+
+  const { data, error } = await POST("/cat/api/fleets/{fleet_id}/wing/{wing_id}/squad", {
+    params: {
+      path: { fleet_id: fleet_id, wing_id: wingID },
+    },
+  });
+
+  if (error) {
+    console.log(error);
+  } else {
+    console.log(data);
+  }
+}
+
+async function delWing(fleet_id: number, wingID: number) {
+  const { DELETE } = getCatApi();
+
+  const { data, error } = await DELETE("/cat/api/fleets/{fleet_id}/wing/{wing_id}", {
+    params: {
+      path: { fleet_id: fleet_id, wing_id: wingID },
+    },
+  });
+
+  if (error) {
+    console.log(error);
+  } else {
+    console.log(data);
+  }
+}
+
 export function FleetWing({ wing, updating }: WingProps) {
   const id = `${wing.wing_id}`;
   const [newName, setName] = useState<string>(wing.name ? wing.name : "Unknown");
   const { fleetID } = useParams();
 
-  const squadCounts = wing.squads?.reduce((_p, squad) => {
+  const squadCounts = wing.squads?.reduce((p, squad) => {
     let sqmCount = squad.characters ? squad.characters.length : 0;
     if (squad.commander) {
       sqmCount = sqmCount + 1;
     }
-    return sqmCount;
+    return p + sqmCount;
   }, 0);
   let memberCount = 0;
   if (squadCounts) {
@@ -63,7 +97,7 @@ export function FleetWing({ wing, updating }: WingProps) {
           {memberCount ? `${memberCount}` : "Empty"}
         </span>
         <div className="ms-auto">
-          <EditFleetObject id={`edit-${id}`} icon={"fa-bars"}>
+          <EditFleetObjectCollapse id={`edit-${id}`} icon={"fa-bars"}>
             <div className="d-flex align-items-center flex-row mx-2">
               <Form.Control
                 size="sm"
@@ -84,8 +118,40 @@ export function FleetWing({ wing, updating }: WingProps) {
                   }`}
                 ></i>
               </Button>
+              <OverlayTrigger
+                placement={"left"}
+                overlay={<Tooltip id={`tooltip-warp-${id}`}>Add Squad</Tooltip>}
+              >
+                <Button
+                  className="ms-2"
+                  variant={""}
+                  size={"sm"}
+                  onClick={() => {
+                    addSquad(fleetID ? +fleetID : 0, wing.wing_id);
+                  }}
+                >
+                  <i className={`fas fa-plus`}></i>
+                </Button>
+              </OverlayTrigger>
+              {!memberCount && (
+                <OverlayTrigger
+                  placement={"left"}
+                  overlay={<Tooltip id={`tooltip-warp-${id}`}>Delete Wing</Tooltip>}
+                >
+                  <Button
+                    className="ms-2"
+                    variant={"danger"}
+                    size={"sm"}
+                    onClick={() => {
+                      delWing(fleetID ? +fleetID : 0, wing.wing_id);
+                    }}
+                  >
+                    <i className={`fas fa-trash`}></i>
+                  </Button>
+                </OverlayTrigger>
+              )}
             </div>
-          </EditFleetObject>
+          </EditFleetObjectCollapse>
         </div>
       </div>
       <FleetDroppable id={`wing_commander-${id}`}>

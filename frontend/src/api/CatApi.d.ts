@@ -280,6 +280,8 @@ export interface components {
        * @default -2
        */
       distance?: number | null;
+      /** Takes Fleet Warp */
+      takes_fleet_warp?: boolean | null;
     };
     /** CharacterCount */
     CharacterCount: {

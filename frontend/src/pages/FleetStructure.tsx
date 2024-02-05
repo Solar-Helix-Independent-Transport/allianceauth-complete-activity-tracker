@@ -1,39 +1,24 @@
-import { getCatApi } from "../api/Api";
+import FleetComp from "../components/stats/FleetComp";
 import { Fleet } from "../components/structure/FleetStructure";
-import { useQuery } from "@tanstack/react-query";
 import Card from "react-bootstrap/Card";
-import { useParams } from "react-router-dom";
-
-async function getFleetStructure(fleetID: number) {
-  const { GET } = getCatApi();
-
-  const { data, error } = await GET("/cat/api/fleets/{fleet_id}/structure", {
-    params: {
-      path: { fleet_id: fleetID },
-    },
-  });
-  if (error) {
-    console.log(error);
-  } else {
-    console.log("COMP:", data);
-    return data;
-  }
-}
 
 const FleetStructure = () => {
-  const { fleetID } = useParams();
-  const { data } = useQuery({
-    queryKey: ["getFleetStructure", fleetID],
-    queryFn: async () => await getFleetStructure(fleetID ? +fleetID : 0),
-    refetchInterval: 5000,
-  });
-
   // Fleet > Wing > Squad > People
   // Command available at each level
   return (
-    <Card className="w-100">
-      <Card.Body>{data && <Fleet fleet={data} />}</Card.Body>
-    </Card>
+    <div className="d-flex flex-row">
+      <div className="col-md-12 col-lg-6">
+        <Card className="m-4 ">
+          <Card.Body>
+            <Card.Title>Fleet Structure</Card.Title>
+            <Fleet />
+          </Card.Body>
+        </Card>
+      </div>
+      <div className="col-md-12 col-lg-6">
+        <FleetComp />
+      </div>
+    </div>
   );
 };
 

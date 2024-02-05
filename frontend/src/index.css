@@ -1,0 +1,12 @@
+@keyframes fleet-refetch-anim {
+  to {
+    /* More performant than animating `width` */
+    transform: scaleX(0);
+  }
+}
+
+.fleet-refetch-countdown {
+  /* ... */
+  animation: fleet-refetch-anim 6s linear forwards;
+  transform-origin: left center;
+}

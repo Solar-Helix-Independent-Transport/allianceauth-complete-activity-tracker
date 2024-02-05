@@ -1,11 +1,34 @@
+import { getCatApi } from "../../api/Api";
 import { components } from "../../api/CatApi";
+import { EditFleetObjectCollapse } from "./utils/EditFleetObjectCollapse";
 import { Draggable, DraggableStyle } from "@hello-pangea/dnd";
 import { CSSProperties } from "react";
+import Button from "react-bootstrap/Button";
+import OverlayTrigger from "react-bootstrap/esm/OverlayTrigger";
+import Tooltip from "react-bootstrap/esm/Tooltip";
+import { useParams } from "react-router-dom";
 
 export declare interface FleetMemberProps {
   character: components["schemas"]["SnapshotCharacter"];
   icon?: string;
   index: number;
+  updating?: boolean;
+}
+
+async function kickMember(fleetID: number, characterID: number) {
+  const { DELETE } = getCatApi();
+
+  const { data, error } = await DELETE("/cat/api/fleets/{fleet_id}/kick/{character_id}", {
+    params: {
+      path: { fleet_id: fleetID, character_id: characterID },
+    },
+  });
+
+  if (error) {
+    console.log(error);
+  } else {
+    console.log(data);
+  }
 }
 
 const getItemStyle = (
@@ -22,8 +45,9 @@ const getItemStyle = (
   ...draggableStyle,
 });
 
-export function FleetMember({ character, icon, index }: FleetMemberProps) {
+export function FleetMember({ character, icon, index, updating }: FleetMemberProps) {
   const id = `${character.character.character_id}`;
+  const { fleetID } = useParams();
 
   return (
     <Draggable key={id} draggableId={id} index={index}>
@@ -36,10 +60,14 @@ export function FleetMember({ character, icon, index }: FleetMemberProps) {
           className="d-flex align-items-center"
           key={id}
         >
-          {icon && (
-            <span>
-              <i className={`mx-1 fas fa-fw ${icon}`}></i>
-            </span>
+          {updating ? (
+            <i className="mx-1 fas fa-fw fa-arrows-rotate fa-spin"></i>
+          ) : (
+            icon && (
+              <span>
+                <i className={`mx-1 fas fa-fw ${icon}`}></i>
+              </span>
+            )
           )}
           <img
             src={`https://images.evetech.net/characters/${character.character.character_id}/portrait?size=32`}
@@ -49,6 +77,32 @@ export function FleetMember({ character, icon, index }: FleetMemberProps) {
           <span>({character.ship.name})</span>
           <span className="ms-auto">{character.system.name}</span>
           <span>({character.distance})</span>
+          <span className="mx-2">
+            <>
+              {!character.takes_fleet_warp && (
+                <OverlayTrigger
+                  placement={"left"}
+                  overlay={<Tooltip id={`tooltip-warp-${id}`}>Exempted From Fleet Warp</Tooltip>}
+                >
+                  <i className={`fas fa-arrow-right-to-bracket text-danger`}></i>
+                </OverlayTrigger>
+              )}
+            </>
+          </span>
+          <EditFleetObjectCollapse id={`edit-${id}`} icon={"fa-bars"}>
+            <div className="d-flex flex-row me-2">
+              <Button
+                variant={"danger"}
+                size={"sm"}
+                onClick={() => {
+                  kickMember(fleetID ? +fleetID : 0, character.character.character_id);
+                }}
+              >
+                <i className={`fas fa-trash`}></i>
+              </Button>
+            </div>
+          </EditFleetObjectCollapse>
+          {/* )} */}
         </div>
       )}
     </Draggable>

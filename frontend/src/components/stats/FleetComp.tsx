@@ -5,7 +5,7 @@ import Card from "react-bootstrap/Card";
 import { useParams } from "react-router-dom";
 
 const getFleetComp = async (fleetID: number) => {
-  console.log("getFleetComp");
+  // console.log("getFleetComp");
   const { GET } = getCatApi();
 
   const { data, error } = await GET("/cat/api/fleets/{fleet_id}/stats", {
@@ -34,7 +34,7 @@ const FleetComp = () => {
   return (
     <Card className="m-4 flex-fill">
       <Card.Body>
-        <Card.Title>Fleet Comp</Card.Title>
+        <Card.Title>Fleet Composition</Card.Title>
         <hr />
         {data?.map((ship: any) => {
           return (

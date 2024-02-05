@@ -66,6 +66,7 @@ class SnapshotCharacter(Schema):
     role: str
     join_time: datetime
     distance: Optional[int] = -2
+    takes_fleet_warp: Optional[bool] = None
 
 
 class Snapshot(Schema):

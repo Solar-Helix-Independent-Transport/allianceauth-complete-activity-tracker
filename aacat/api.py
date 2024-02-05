@@ -599,6 +599,8 @@ def kick_fleet_member(request, fleet_id: int, character_id: int):
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
     token = Token.get_token(fleet.boss.character_id, [
                             'esi-fleets.write_fleet.v1'])
+    if character_id == fleet.boss.character_id:
+        return 403, "Cannot Kick Fleet Boss!"
     status = providers.esi.client.Fleets.delete_fleets_fleet_id_members_member_id(
         fleet_id=fleet_id,
         member_id=character_id,
@@ -790,7 +792,8 @@ def get_fleet_structure(request, fleet_id: int):
                 "name": e.ship.name,
             },
             "role": e.role,
-            "join_time": e.join_time
+            "join_time": e.join_time,
+            "takes_fleet_warp": e.takes_fleet_warp
         }
 
     for e in fleet_member_data:

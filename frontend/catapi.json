@@ -1455,6 +1455,10 @@
             "anyOf": [{ "type": "integer" }, { "type": "null" }],
             "default": -2,
             "title": "Distance"
+          },
+          "takes_fleet_warp": {
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+            "title": "Takes Fleet Warp"
           }
         },
         "required": ["character", "system", "ship", "role", "join_time"],

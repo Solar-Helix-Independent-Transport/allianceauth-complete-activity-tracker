@@ -1,0 +1,1 @@
+@keyframes fleet-refetch-anim{to{transform:scaleX(0)}}.fleet-refetch-countdown{animation:fleet-refetch-anim 6s linear forwards;transform-origin:left center}

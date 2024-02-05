@@ -1,18 +1,21 @@
 {
-  "_@libs-jgGTBJdQ.js": {
-    "file": "assets/@libs-jgGTBJdQ.js"
+  "_@libs-dlJ_1hlb.js": {
+    "file": "assets/@libs-dlJ_1hlb.js"
   },
-  "_@react-router-br-l5pkA.js": {
-    "file": "assets/@react-router-br-l5pkA.js",
+  "_@react-router-dr5tvdKq.js": {
+    "file": "assets/@react-router-dr5tvdKq.js",
     "imports": [
-      "_@libs-jgGTBJdQ.js"
+      "_@libs-dlJ_1hlb.js"
     ]
   },
   "index.html": {
-    "file": "assets/index-wyM5lIpU.js",
+    "css": [
+      "assets/index-J7_kJ2_h.css"
+    ],
+    "file": "assets/index-w3fSeuVr.js",
     "imports": [
-      "_@libs-jgGTBJdQ.js",
-      "_@react-router-br-l5pkA.js"
+      "_@libs-dlJ_1hlb.js",
+      "_@react-router-dr5tvdKq.js"
     ],
     "isEntry": true,
     "src": "index.html"

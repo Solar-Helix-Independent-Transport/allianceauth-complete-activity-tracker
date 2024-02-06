@@ -13,6 +13,7 @@ export declare interface FleetMemberProps {
   icon?: string;
   index: number;
   updating?: boolean;
+  editable?: boolean;
 }
 
 const getItemStyle = (
@@ -29,7 +30,7 @@ const getItemStyle = (
   ...draggableStyle,
 });
 
-export function FleetMember({ character, icon, index, updating }: FleetMemberProps) {
+export function FleetMember({ character, icon, index, updating, editable }: FleetMemberProps) {
   const id = `${character.character.character_id}`;
   const { fleetID } = useParams();
 
@@ -83,23 +84,25 @@ export function FleetMember({ character, icon, index, updating }: FleetMemberPro
               )}
             </>
           </span>
-          <EditFleetObjectCollapse
-            variant={undefined}
-            id={`edit-${id}`}
-            icon={"fa-ellipsis-vertical"}
-          >
-            <div className="d-flex flex-row me-2">
-              <Button
-                variant={"danger"}
-                size={"sm"}
-                onClick={() => {
-                  kickMember(fleetID ? +fleetID : 0, character.character.character_id);
-                }}
-              >
-                <i className={`fas fa-trash`}></i>
-              </Button>
-            </div>
-          </EditFleetObjectCollapse>
+          {editable && (
+            <EditFleetObjectCollapse
+              variant={undefined}
+              id={`edit-${id}`}
+              icon={"fa-ellipsis-vertical"}
+            >
+              <div className="d-flex flex-row me-2">
+                <Button
+                  variant={"danger"}
+                  size={"sm"}
+                  onClick={() => {
+                    kickMember(fleetID ? +fleetID : 0, character.character.character_id);
+                  }}
+                >
+                  <i className={`fas fa-trash`}></i>
+                </Button>
+              </div>
+            </EditFleetObjectCollapse>
+          )}
           {/* )} */}
         </div>
       )}

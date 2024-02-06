@@ -28,6 +28,66 @@ export async function getActiveFleetList() {
     return data;
   }
 }
+export async function postInviteMember(fleetID: number, characterID: number) {
+  const { POST } = getCatApi();
+
+  const { data, error } = await POST("/cat/api/fleets/{fleet_id}/invite/{character_id}", {
+    params: {
+      path: {
+        character_id: characterID,
+        fleet_id: fleetID,
+      },
+    },
+  });
+
+  if (error) {
+    console.log(error);
+  } else {
+    console.log(data);
+    return data;
+  }
+}
+
+export async function postRenameFleet(fleetID: number, name: string) {
+  const { POST } = getCatApi();
+
+  const { data, error } = await POST("/cat/api/fleets/{fleet_id}/name", {
+    params: {
+      path: {
+        fleet_id: fleetID,
+      },
+      query: {
+        name: name,
+      },
+    },
+  });
+
+  if (error) {
+    console.log(error);
+  } else {
+    console.log(data);
+    return data;
+  }
+}
+
+export async function getActiveFleetDetails(fleetID: number) {
+  const { GET } = getCatApi();
+
+  const { data, error } = await GET("/cat/api/fleets/{fleet_id}/details", {
+    params: {
+      path: {
+        fleet_id: fleetID,
+      },
+    },
+  });
+
+  if (error) {
+    console.log(error);
+  } else {
+    console.log(data);
+    return data;
+  }
+}
 
 export async function getRecentFleetList() {
   const { GET } = getCatApi();

@@ -1,5 +1,5 @@
 import { performTrackFleetRequest } from "../../api/Methods";
-import TrackFleetSelect from "./TrackFleetSelect";
+import CharacterSeachSelect from "../CharacterSeachSelect";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import Button from "react-bootstrap/Button";
@@ -26,7 +26,7 @@ const TrackFleetSearch = () => {
       <Card.Body>
         <Card.Title>Track New Fleet</Card.Title>
         <hr />
-        <TrackFleetSelect setCharacter={setCharacter} />
+        <CharacterSeachSelect setCharacter={setCharacter} />
 
         <Button disabled={isFetching || character == 0} onClick={trackFleet} className="w-100 mt-2">
           Track Fleet

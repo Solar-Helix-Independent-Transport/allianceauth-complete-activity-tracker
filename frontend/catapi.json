@@ -943,11 +943,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "application/json": { "schema": { "title": "Response", "type": "object" } }
+              "application/json": { "schema": { "$ref": "#/components/schemas/FleetDetails" } }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
             }
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
             "content": {
               "application/json": { "schema": { "title": "Response", "type": "string" } }
             }
@@ -984,7 +1008,19 @@
           "200": {
             "description": "OK",
             "content": {
-              "application/json": { "schema": { "title": "Response", "type": "object" } }
+              "application/json": { "schema": { "$ref": "#/components/schemas/FleetState" } }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
             }
           },
           "403": {
@@ -992,9 +1028,82 @@
             "content": {
               "application/json": { "schema": { "title": "Response", "type": "string" } }
             }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
           }
         },
         "description": "Update fleet Free move and MOTD",
+        "tags": ["Actions"],
+        "security": [{ "SessionAuth": [] }]
+      }
+    },
+    "/cat/api/fleets/{fleet_id}/name": {
+      "post": {
+        "operationId": "aacat_api_post_fleet_name",
+        "summary": "Post Fleet Name",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fleet_id",
+            "schema": { "title": "Fleet Id", "type": "integer" },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "schema": { "title": "Name", "type": "string" },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": { "schema": { "title": "Response", "type": "string" } }
+            }
+          }
+        },
+        "description": "Update fleet Free name in auth",
         "tags": ["Actions"],
         "security": [{ "SessionAuth": [] }]
       }
@@ -1399,6 +1508,10 @@
         "properties": {
           "corporation_id": { "title": "Corporation Id", "type": "integer" },
           "corporation_name": { "title": "Corporation Name", "type": "string" },
+          "corporation_ticker": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Corporation Ticker"
+          },
           "alliance_id": {
             "anyOf": [{ "type": "integer" }, { "type": "null" }],
             "title": "Alliance Id"
@@ -1406,6 +1519,10 @@
           "alliance_name": {
             "anyOf": [{ "type": "string" }, { "type": "null" }],
             "title": "Alliance Name"
+          },
+          "alliance_ticker": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Alliance Ticker"
           },
           "character_name": { "title": "Character Name", "type": "string" },
           "character_id": { "title": "Character Id", "type": "integer" }
@@ -1424,10 +1541,31 @@
           "end_time": {
             "anyOf": [{ "format": "date-time", "type": "string" }, { "type": "null" }],
             "title": "End Time"
-          }
+          },
+          "editable": { "default": false, "title": "Editable", "type": "boolean" },
+          "state": { "anyOf": [{ "$ref": "#/components/schemas/FleetState" }, { "type": "null" }] }
         },
         "required": ["name", "boss", "eve_fleet_id", "start_time", "last_update"],
         "title": "FleetDetails",
+        "type": "object"
+      },
+      "FleetState": {
+        "properties": {
+          "is_free_move": { "title": "Is Free Move", "type": "boolean" },
+          "is_registered": {
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+            "default": false,
+            "title": "Is Registered"
+          },
+          "is_voice_enabled": {
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+            "default": false,
+            "title": "Is Voice Enabled"
+          },
+          "motd": { "title": "Motd", "type": "string" }
+        },
+        "required": ["is_free_move", "motd"],
+        "title": "FleetState",
         "type": "object"
       },
       "Snapshot": {
@@ -1533,7 +1671,8 @@
             ],
             "default": [],
             "title": "Wings"
-          }
+          },
+          "editable": { "default": false, "title": "Editable", "type": "boolean" }
         },
         "required": ["fleet_boss"],
         "title": "FleetStructure",

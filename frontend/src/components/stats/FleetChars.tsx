@@ -33,7 +33,7 @@ const FleetCharacters = () => {
     <>
       {data?.map((countList: components["schemas"]["CountResponse"]) => {
         return (
-          <Card className="m-4 flex-fill" style={{ minWidth: "24em" }}>
+          <Card className="m-1 flex-fill" style={{ minWidth: "24em" }}>
             <Card.Body>
               <Card.Title>{countList.name}</Card.Title>
               <hr />

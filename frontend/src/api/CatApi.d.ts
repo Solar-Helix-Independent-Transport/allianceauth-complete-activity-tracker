@@ -120,6 +120,13 @@ export interface paths {
      */
     put: operations["aacat_api_put_fleet_details"];
   };
+  "/cat/api/fleets/{fleet_id}/name": {
+    /**
+     * Post Fleet Name
+     * @description Update fleet Free name in auth
+     */
+    post: operations["aacat_api_post_fleet_name"];
+  };
   "/cat/api/fleets/{fleet_id}/kick/{character_id}": {
     /**
      * Kick Fleet Member
@@ -224,13 +231,13 @@ export interface components {
       /** Corporation Name */
       corporation_name: string;
       /** Corporation Ticker */
-      corporation_ticker?: string;
+      corporation_ticker?: string | null;
       /** Alliance Id */
       alliance_id?: number | null;
       /** Alliance Name */
       alliance_name?: string | null;
       /** Alliance Ticker */
-      alliance_ticker?: string;
+      alliance_ticker?: string | null;
       /** Character Name */
       character_name: string;
       /** Character Id */
@@ -255,6 +262,29 @@ export interface components {
       last_update: string;
       /** End Time */
       end_time?: string | null;
+      /**
+       * Editable
+       * @default false
+       */
+      editable?: boolean;
+      state?: components["schemas"]["FleetState"] | null;
+    };
+    /** FleetState */
+    FleetState: {
+      /** Is Free Move */
+      is_free_move: boolean;
+      /**
+       * Is Registered
+       * @default false
+       */
+      is_registered?: boolean | null;
+      /**
+       * Is Voice Enabled
+       * @default false
+       */
+      is_voice_enabled?: boolean | null;
+      /** Motd */
+      motd: string;
     };
     /** Snapshot */
     Snapshot: {
@@ -335,6 +365,11 @@ export interface components {
        * @default []
        */
       wings?: components["schemas"]["FleetWing"][] | null;
+      /**
+       * Editable
+       * @default false
+       */
+      editable?: boolean;
     };
     /** FleetWing */
     FleetWing: {
@@ -1094,11 +1129,35 @@ export interface operations {
       /** @description OK */
       200: {
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["FleetDetails"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        content: {
+          "application/json": string;
         };
       };
       /** @description Forbidden */
       403: {
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Gateway Timeout */
+      504: {
         content: {
           "application/json": string;
         };
@@ -1123,11 +1182,87 @@ export interface operations {
       /** @description OK */
       200: {
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["FleetState"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        content: {
+          "application/json": string;
         };
       };
       /** @description Forbidden */
       403: {
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Gateway Timeout */
+      504: {
+        content: {
+          "application/json": string;
+        };
+      };
+    };
+  };
+  /**
+   * Post Fleet Name
+   * @description Update fleet Free name in auth
+   */
+  aacat_api_post_fleet_name: {
+    parameters: {
+      query: {
+        name: string;
+      };
+      path: {
+        fleet_id: number;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Gateway Timeout */
+      504: {
         content: {
           "application/json": string;
         };

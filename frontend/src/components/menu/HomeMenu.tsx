@@ -11,6 +11,11 @@ const HomeMenu = () => {
     <>
       <FleetNavItem text={"Active"} url={`/cat/active`} />
       <FleetNavItem text={"Recent"} url={`/cat/recent`} />
+      <div className="nav-item">
+        <a className="nav-link" href="/cat/char/add">
+          <i className="fas fa-plus fa-fw"></i>
+        </a>
+      </div>
     </>,
     menuRoot
   );

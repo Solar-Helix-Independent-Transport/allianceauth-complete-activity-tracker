@@ -51,6 +51,13 @@ class CountResponse(Schema):
     characters: Optional[list[CharacterCount]] = []
 
 
+class FleetState(Schema):
+    is_free_move: bool
+    is_registered: Optional[bool] = False
+    is_voice_enabled: Optional[bool] = False
+    motd: str
+
+
 class FleetDetails(Schema):
     name: str
     boss: Character
@@ -58,6 +65,8 @@ class FleetDetails(Schema):
     start_time: datetime
     last_update: datetime
     end_time: Optional[datetime] = None
+    editable: bool = False
+    state: Optional[FleetState] = None
 
 
 class SnapshotCharacter(Schema):
@@ -94,3 +103,4 @@ class FleetStructure(Schema):
     fleet_boss: Character
     commander: Optional[SnapshotCharacter] = None
     wings: Optional[list[FleetWing]] = []
+    editable: bool = False

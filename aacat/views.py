@@ -7,7 +7,13 @@ from esi.decorators import token_required
 from . import __version__
 
 
-@token_required(scopes=['esi-location.read_online.v1', 'esi-fleets.read_fleet.v1', 'esi-fleets.write_fleet.v1'])
+@token_required(
+    scopes=[
+        'esi-location.read_online.v1',
+        'esi-fleets.read_fleet.v1',
+        'esi-fleets.write_fleet.v1'
+    ]
+)
 def add_char(request, token):
     return redirect('authentication:dashboard')
 

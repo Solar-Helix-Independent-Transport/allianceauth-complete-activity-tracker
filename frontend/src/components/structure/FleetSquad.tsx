@@ -14,9 +14,10 @@ export declare interface SquadProps {
   wing_id: number;
   squad: components["schemas"]["FleetSquad"];
   updating?: Array<number>;
+  editable?: boolean;
 }
 
-export function FleetSquad({ squad, wing_id, updating }: SquadProps) {
+export function FleetSquad({ squad, wing_id, updating, editable }: SquadProps) {
   const id = `${wing_id}-${squad.squad_id}`;
   const [newName, setName] = useState<string>(squad.name ? squad.name : "Unknown");
   const { fleetID } = useParams();
@@ -33,46 +34,48 @@ export function FleetSquad({ squad, wing_id, updating }: SquadProps) {
           {memberCount ? `${memberCount}` : "Empty"}
         </span>
         <div className="ms-auto">
-          <EditFleetObjectCollapse id={`edit-${id}`} icon={"fa-bars"}>
-            <div className="d-flex flex-row mx-2">
-              <Form.Control
-                size="sm"
-                type="text"
-                onChange={(e) => setName(e.target.value)}
-                placeholder={"New Name"}
-              />
-              <Button
-                variant={newName == squad.name ? "success" : "warning"}
-                size={"sm"}
-                onClick={() => {
-                  renameSquad(fleetID ? +fleetID : 0, squad.squad_id, newName);
-                }}
-              >
-                <i
-                  className={`fas ${
-                    newName == squad.name ? "fa-check" : "fa-arrow-up-right-from-square"
-                  }`}
-                ></i>
-              </Button>
-              {!memberCount && (
-                <OverlayTrigger
-                  placement={"left"}
-                  overlay={<Tooltip id={`tooltip-warp-${id}`}>Delete Squad</Tooltip>}
+          {editable && (
+            <EditFleetObjectCollapse id={`edit-${id}`} icon={"fa-bars"}>
+              <div className="d-flex flex-row mx-2">
+                <Form.Control
+                  size="sm"
+                  type="text"
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={"New Name"}
+                />
+                <Button
+                  variant={newName == squad.name ? "success" : "warning"}
+                  size={"sm"}
+                  onClick={() => {
+                    renameSquad(fleetID ? +fleetID : 0, squad.squad_id, newName);
+                  }}
                 >
-                  <Button
-                    className="ms-2"
-                    variant={"danger"}
-                    size={"sm"}
-                    onClick={() => {
-                      delSquad(fleetID ? +fleetID : 0, squad.squad_id);
-                    }}
+                  <i
+                    className={`fas ${
+                      newName == squad.name ? "fa-check" : "fa-arrow-up-right-from-square"
+                    }`}
+                  ></i>
+                </Button>
+                {!memberCount && (
+                  <OverlayTrigger
+                    placement={"left"}
+                    overlay={<Tooltip id={`tooltip-warp-${id}`}>Delete Squad</Tooltip>}
                   >
-                    <i className={`fas fa-trash`}></i>
-                  </Button>
-                </OverlayTrigger>
-              )}
-            </div>
-          </EditFleetObjectCollapse>
+                    <Button
+                      className="ms-2"
+                      variant={"danger"}
+                      size={"sm"}
+                      onClick={() => {
+                        delSquad(fleetID ? +fleetID : 0, squad.squad_id);
+                      }}
+                    >
+                      <i className={`fas fa-trash`}></i>
+                    </Button>
+                  </OverlayTrigger>
+                )}
+              </div>
+            </EditFleetObjectCollapse>
+          )}
         </div>
       </div>
       <FleetDroppable id={`squad_commander-${id}`}>
@@ -82,6 +85,7 @@ export function FleetSquad({ squad, wing_id, updating }: SquadProps) {
             updating={updating?.includes(squad.commander?.character.character_id)}
             icon="fa-star"
             index={0}
+            editable={editable}
           />
         ) : (
           <span>
@@ -99,6 +103,7 @@ export function FleetSquad({ squad, wing_id, updating }: SquadProps) {
                     character={char}
                     index={index}
                     updating={updating?.includes(char.character.character_id)}
+                    editable={editable}
                   />
                 );
               }

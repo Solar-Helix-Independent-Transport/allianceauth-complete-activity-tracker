@@ -14,9 +14,10 @@ import { useParams } from "react-router-dom";
 export declare interface WingProps {
   wing: components["schemas"]["FleetWing"];
   updating?: Array<number>;
+  editable?: boolean;
 }
 
-export function FleetWing({ wing, updating }: WingProps) {
+export function FleetWing({ wing, updating, editable }: WingProps) {
   const id = `${wing.wing_id}`;
   const [newName, setName] = useState<string>(wing.name ? wing.name : "Unknown");
   const { fleetID } = useParams();
@@ -44,61 +45,63 @@ export function FleetWing({ wing, updating }: WingProps) {
           {memberCount ? `${memberCount}` : "Empty"}
         </span>
         <div className="ms-auto">
-          <EditFleetObjectCollapse id={`edit-${id}`} icon={"fa-bars"}>
-            <div className="d-flex align-items-center flex-row mx-2">
-              <Form.Control
-                size="sm"
-                type="text"
-                onChange={(e) => setName(e.target.value)}
-                placeholder={"New Name"}
-              />
-              <Button
-                variant={newName == wing.name ? "success" : "warning"}
-                size={"sm"}
-                onClick={() => {
-                  renameWing(fleetID ? +fleetID : 0, wing.wing_id, newName);
-                }}
-              >
-                <i
-                  className={`fas ${
-                    newName == wing.name ? "fa-check" : "fa-arrow-up-right-from-square"
-                  }`}
-                ></i>
-              </Button>
-              <OverlayTrigger
-                placement={"left"}
-                overlay={<Tooltip id={`tooltip-warp-${id}`}>Add Squad</Tooltip>}
-              >
+          {editable && (
+            <EditFleetObjectCollapse id={`edit-${id}`} icon={"fa-bars"}>
+              <div className="d-flex align-items-center flex-row mx-2">
+                <Form.Control
+                  size="sm"
+                  type="text"
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={"New Name"}
+                />
                 <Button
-                  className="ms-2"
-                  variant={""}
+                  variant={newName == wing.name ? "success" : "warning"}
                   size={"sm"}
                   onClick={() => {
-                    addSquad(fleetID ? +fleetID : 0, wing.wing_id);
+                    renameWing(fleetID ? +fleetID : 0, wing.wing_id, newName);
                   }}
                 >
-                  <i className={`fas fa-plus`}></i>
+                  <i
+                    className={`fas ${
+                      newName == wing.name ? "fa-check" : "fa-arrow-up-right-from-square"
+                    }`}
+                  ></i>
                 </Button>
-              </OverlayTrigger>
-              {!memberCount && (
                 <OverlayTrigger
                   placement={"left"}
-                  overlay={<Tooltip id={`tooltip-warp-${id}`}>Delete Wing</Tooltip>}
+                  overlay={<Tooltip id={`tooltip-warp-${id}`}>Add Squad</Tooltip>}
                 >
                   <Button
                     className="ms-2"
-                    variant={"danger"}
+                    variant={""}
                     size={"sm"}
                     onClick={() => {
-                      delWing(fleetID ? +fleetID : 0, wing.wing_id);
+                      addSquad(fleetID ? +fleetID : 0, wing.wing_id);
                     }}
                   >
-                    <i className={`fas fa-trash`}></i>
+                    <i className={`fas fa-plus`}></i>
                   </Button>
                 </OverlayTrigger>
-              )}
-            </div>
-          </EditFleetObjectCollapse>
+                {!memberCount && (
+                  <OverlayTrigger
+                    placement={"left"}
+                    overlay={<Tooltip id={`tooltip-warp-${id}`}>Delete Wing</Tooltip>}
+                  >
+                    <Button
+                      className="ms-2"
+                      variant={"danger"}
+                      size={"sm"}
+                      onClick={() => {
+                        delWing(fleetID ? +fleetID : 0, wing.wing_id);
+                      }}
+                    >
+                      <i className={`fas fa-trash`}></i>
+                    </Button>
+                  </OverlayTrigger>
+                )}
+              </div>
+            </EditFleetObjectCollapse>
+          )}
         </div>
       </div>
       <FleetDroppable id={`wing_commander-${id}`}>
@@ -108,6 +111,7 @@ export function FleetWing({ wing, updating }: WingProps) {
             updating={updating?.includes(wing.commander?.character.character_id)}
             icon="fa-star"
             index={0}
+            editable={editable}
           />
         ) : (
           <span>
@@ -118,7 +122,14 @@ export function FleetWing({ wing, updating }: WingProps) {
       <div className="ms-4">
         {wing.squads?.length ? (
           wing.squads.map((squad: components["schemas"]["FleetSquad"]) => {
-            return <FleetSquad squad={squad} wing_id={wing.wing_id} updating={updating} />;
+            return (
+              <FleetSquad
+                squad={squad}
+                wing_id={wing.wing_id}
+                updating={updating}
+                editable={editable}
+              />
+            );
           })
         ) : (
           <span>No Squads</span>

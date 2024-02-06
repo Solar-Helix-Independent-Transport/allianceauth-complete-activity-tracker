@@ -32,7 +32,7 @@ const FleetComp = () => {
 
   console.log(data);
   return (
-    <Card className="m-4 flex-fill">
+    <Card className="m-1 flex-fill">
       <Card.Body>
         <Card.Title>Fleet Composition</Card.Title>
         <hr />

@@ -565,7 +565,7 @@ def get_fleet_id_from_character_id(request, character_id: int):
 
 @api.get(
     "/fleets/{fleet_id}/details",
-    response={200: dict, 403: str},
+    response={200: schema.FleetDetails, **schema.error_responses},
     tags=["Actions"]
 )
 def get_fleet_details(request, fleet_id: int):
@@ -576,18 +576,48 @@ def get_fleet_details(request, fleet_id: int):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
-    token = Token.get_token(fleet.boss.character_id, [
-                            'esi-fleets.write_fleet.v1'])
+    token_write = Token.get_token(fleet.boss.character_id, [
+        'esi-fleets.write_fleet.v1'])
+    token_read = Token.get_token(fleet.boss.character_id, [
+        'esi-fleets.read_fleet.v1'])
     details = providers.esi.client.Fleets.get_fleets_fleet_id(
         fleet_id=fleet_id,
-        token=token.valid_access_token()
+        token=token_read.valid_access_token()
     ).result()
-    return details
+    _f = {
+        "name": fleet.name,
+        "boss": fleet.boss,
+        "eve_fleet_id": fleet.eve_fleet_id,
+        "start_time": fleet.start_time,
+        "last_update": fleet.last_update,
+        "end_time": fleet.end_time,
+        "editable": True if token_write else False,
+        "state": details
+    }
+    return _f
+
+
+@api.post(
+    "/fleets/{fleet_id}/name",
+    response={200: str, **schema.error_responses},
+    tags=["Actions"]
+)
+def post_fleet_name(request, fleet_id: int, name: str):
+    """
+        Update fleet Free name in auth
+    """
+    if not request.user.has_perm('aacat.edit_fleets'):
+        return 403, "No Perms"
+
+    fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+    fleet.name = name
+    fleet.save()
+    return "Fleet Renamed"
 
 
 @api.put(
     "/fleets/{fleet_id}/details",
-    response={200: dict, 403: str},
+    response={200: schema.FleetState, **schema.error_responses},
     tags=["Actions"]
 )
 def put_fleet_details(request, fleet_id: int, free_move: bool = None, motd: str = None):
@@ -859,6 +889,10 @@ def get_fleet_structure(request, fleet_id: int):
 
     fleet_structure["wings"] = sorted(
         list(fleet_structure["wings"].values()), key=lambda x: x['name'].lower())
+
+    token = Token.get_token(fleet.boss.character_id, [
+                            'esi-fleets.write_fleet.v1'])
+    fleet_structure["editable"] = True if token else False
 
     return fleet_structure
 

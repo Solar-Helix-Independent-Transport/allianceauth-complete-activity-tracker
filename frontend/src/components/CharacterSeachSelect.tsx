@@ -1,9 +1,9 @@
-import { performCharacterSearchRequest } from "../../api/Methods";
+import { performCharacterSearchRequest } from "../api/Methods";
 import AsyncSelect from "react-select/async";
 
 type ValueType = { label: string; value: number };
 
-const TrackFleetSelect = ({
+const CharacterSeachSelect = ({
   setCharacter,
 }: {
   setCharacter: React.Dispatch<React.SetStateAction<number>>;
@@ -36,12 +36,14 @@ const TrackFleetSelect = ({
             };
           },
         }}
+        className="m-0"
         loadOptions={loadOptions}
         noOptionsMessage={noOptionsMessage}
         onChange={processOnChange}
+        isClearable={true}
       />
     </>
   );
 };
 
-export default TrackFleetSelect;
+export default CharacterSeachSelect;

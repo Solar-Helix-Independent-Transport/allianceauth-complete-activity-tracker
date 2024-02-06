@@ -43,30 +43,32 @@ export function Fleet() {
   }
 
   return (
-    <Card className="m-4 ">
+    <Card className="m-1">
       <Card.Body>
         <div className="d-flex flex-row align-items-center">
           <h5>Fleet Structure</h5>
           <div className="ms-auto">
-            <EditFleetObjectCollapse variant={undefined} id={`edit-fleet`} icon={"fa-bars"}>
-              <div className="d-flex flex-row me-2">
-                <OverlayTrigger
-                  placement={"left"}
-                  overlay={<Tooltip id={`tooltip-fleet-wing`}>Add Wing</Tooltip>}
-                >
-                  <Button
-                    className="ms-2"
-                    variant={""}
-                    size={"sm"}
-                    onClick={() => {
-                      addWing(fleetID ? +fleetID : 0);
-                    }}
+            {data?.editable && (
+              <EditFleetObjectCollapse variant={undefined} id={`edit-fleet`} icon={"fa-bars"}>
+                <div className="d-flex flex-row me-2">
+                  <OverlayTrigger
+                    placement={"left"}
+                    overlay={<Tooltip id={`tooltip-fleet-wing`}>Add Wing</Tooltip>}
                   >
-                    <i className={`fas fa-plus`}></i>
-                  </Button>
-                </OverlayTrigger>
-              </div>
-            </EditFleetObjectCollapse>
+                    <Button
+                      className="ms-2"
+                      variant={""}
+                      size={"sm"}
+                      onClick={() => {
+                        addWing(fleetID ? +fleetID : 0);
+                      }}
+                    >
+                      <i className={`fas fa-plus`}></i>
+                    </Button>
+                  </OverlayTrigger>
+                </div>
+              </EditFleetObjectCollapse>
+            )}
           </div>
         </div>
         <DragDropContext onDragEnd={handleDragEnd}>
@@ -90,6 +92,7 @@ export function Fleet() {
                       updating={updatingCharacters.includes(data.commander?.character.character_id)}
                       icon="fa-star"
                       index={0}
+                      editable={data.editable}
                     />
                   ) : (
                     <span>
@@ -101,7 +104,11 @@ export function Fleet() {
                   {data.wings?.map((wing: components["schemas"]["FleetWing"]) => {
                     return (
                       <>
-                        <FleetWing wing={wing} updating={updatingCharacters} />
+                        <FleetWing
+                          wing={wing}
+                          updating={updatingCharacters}
+                          editable={data.editable}
+                        />
                       </>
                     );
                   })}

@@ -26,7 +26,7 @@ const ActiveFleetList = () => {
           <hr />
           <LinkContainer to={`/cat/active/${fleet.eve_fleet_id}/`}>
             <Button variant="primary" className="w-100">
-              View Fleet {fleet.eve_fleet_id}
+              View Fleet
             </Button>
           </LinkContainer>
           <CloseFleetButton fleet_id={fleet.eve_fleet_id} />

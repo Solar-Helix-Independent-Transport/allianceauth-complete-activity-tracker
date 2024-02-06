@@ -209,7 +209,7 @@ def get_fleet_recent_snapshot(request, fleet_id: int):
     max_date = models.FleetEvent.objects.filter(
         fleet=fleet).aggregate(max_date=Max("time"))["max_date"]
     latest_events = models.FleetEvent.objects.filter(
-        fleet=fleet, time=max_date)
+        fleet=fleet, time=max_date).order_by("distance_from_fc", "ship__name")
     snapshot = []
     for e in latest_events:
         main_char = None
@@ -768,7 +768,8 @@ def get_fleet_structure(request, fleet_id: int):
             "solar_system",
             "ship",
             "character_name",
-            "character_name__character_ownership__user__profile__main_character")
+            "character_name__character_ownership__user__profile__main_character"
+    ).order_by("distance_from_fc", "ship__name")
 
     chars = {}
     for e in latest_events:

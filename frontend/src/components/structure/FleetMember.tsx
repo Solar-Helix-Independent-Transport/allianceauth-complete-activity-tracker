@@ -59,9 +59,19 @@ export function FleetMember({ character, icon, index, updating }: FleetMemberPro
           <img src={`https://images.evetech.net/types/${character.ship.id}/icon?size=32`} />
           <h5 className="m-0 mx-2">{character.character.character_name}</h5>
           <span>({character.ship.name})</span>
-          <span className="ms-auto">{character.system.name}</span>
-          <span>({character.distance})</span>
-          <span className="mx-2">
+          <span className=" mx-2 m-0 ms-auto">
+            {character.main ? (
+              <span className="text-muted small">
+                {`${character.main.character_name} (${character.main.corporation_ticker}) [${character.main.alliance_ticker}]`}
+              </span>
+            ) : (
+              <span className="badge bg-danger">No Main</span>
+            )}
+          </span>
+
+          <span className="m-0">{character.system.name}</span>
+          <span className="m-0">({character.distance})</span>
+          <span className="m-0 mx-2">
             <>
               {!character.takes_fleet_warp && (
                 <OverlayTrigger

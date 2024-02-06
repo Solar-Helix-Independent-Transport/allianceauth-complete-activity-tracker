@@ -223,10 +223,14 @@ export interface components {
       corporation_id: number;
       /** Corporation Name */
       corporation_name: string;
+      /** Corporation Ticker */
+      corporation_ticker?: string;
       /** Alliance Id */
       alliance_id?: number | null;
       /** Alliance Name */
       alliance_name?: string | null;
+      /** Alliance Ticker */
+      alliance_ticker?: string;
       /** Character Name */
       character_name: string;
       /** Character Id */

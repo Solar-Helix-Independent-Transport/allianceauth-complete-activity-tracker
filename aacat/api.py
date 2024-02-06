@@ -457,6 +457,25 @@ def get_fleet_character_changes(
             "character_name__character_ownership__user__profile__main_character__alliance_id"),
     )
 
+    unaffiliated = models.FleetEvent.objects.filter(
+        fleet=fleet, character_name__character_ownership__isnull=True
+    ).values(
+        _character_name=F(
+            "character_name__character_name")
+    ).annotate(
+        count=Count("time", distinct=True),
+        _character_id=F(
+            "character_name__character_id"),
+        _corporation_name=F(
+            "character_name__corporation_name"),
+        _corporation_id=F(
+            "character_name__corporation_id"),
+        _alliance_name=F(
+            "character_name__alliance_name"),
+        _alliance_id=F(
+            "character_name__alliance_id"),
+    )
+
     output = {
         "current": {
             "name": "Current",
@@ -473,29 +492,45 @@ def get_fleet_character_changes(
             "total": total_events,
             "characters": []
         },
+        "unaffiliated": {
+            "name": "Unaffiliated",
+            "total": total_events,
+            "characters": [{
+                "character": {
+                    "character_name": c.get("_character_name"),
+                    "character_id": c.get("_character_id"),
+                    "corporation_name": c.get("_corporation_name"),
+                    "corporation_id": c.get("_corporation_id"),
+                    "alliance_name": c.get("_alliance_name", None),
+                    "alliance_id": c.get("_alliance_id", None),
+                },
+                "count": c.get("count", 0)
+            } for c in unaffiliated]
+        },
     }
 
     cutoff = total_events * ratio_cutoff
 
     for c in char_events:
-        character_event = {
-            "character": {
-                "character_name": c.get("main_character_name"),
-                "character_id": c.get("main_character_id"),
-                "corporation_name": c.get("main_corporation_name"),
-                "corporation_id": c.get("main_corporation_id"),
-                "alliance_name": c.get("main_alliance_name", None),
-                "alliance_id": c.get("main_alliance_id", None),
-            },
-            "count": c.get("count", 0)
-        }
-        if c['main_character_name'] in current:
-            if c['count'] > cutoff:
-                output['current']["characters"].append(character_event)
+        if c.get("main_character_id"):
+            character_event = {
+                "character": {
+                    "character_name": c.get("main_character_name"),
+                    "character_id": c.get("main_character_id"),
+                    "corporation_name": c.get("main_corporation_name"),
+                    "corporation_id": c.get("main_corporation_id"),
+                    "alliance_name": c.get("main_alliance_name", None),
+                    "alliance_id": c.get("main_alliance_id", None),
+                },
+                "count": c.get("count", 0)
+            }
+            if c['main_character_name'] in current:
+                if c['count'] > cutoff:
+                    output['current']["characters"].append(character_event)
+                else:
+                    output['joiners']["characters"].append(character_event)
             else:
-                output['joiners']["characters"].append(character_event)
-        else:
-            output['leavers']["characters"].append(character_event)
+                output['leavers']["characters"].append(character_event)
 
     return list(output.values())
 
@@ -819,9 +854,11 @@ def get_fleet_structure(request, fleet_id: int):
 
     # DictToList
     for _, w in fleet_structure["wings"].items():
-        w["squads"] = list(w["squads"].values())
+        w["squads"] = sorted(list(w["squads"].values()),
+                             key=lambda x: x['name'].lower())
 
-    fleet_structure["wings"] = list(fleet_structure["wings"].values())
+    fleet_structure["wings"] = sorted(
+        list(fleet_structure["wings"].values()), key=lambda x: x['name'].lower())
 
     return fleet_structure
 

@@ -17,8 +17,10 @@ error_responses = {
 class Corporation(Schema):
     corporation_id: int
     corporation_name: str
+    corporation_ticker: Optional[str] = None
     alliance_id: Optional[int] = None
     alliance_name: Optional[str] = None
+    alliance_ticker: Optional[str] = None
 
 
 class Character(Corporation):

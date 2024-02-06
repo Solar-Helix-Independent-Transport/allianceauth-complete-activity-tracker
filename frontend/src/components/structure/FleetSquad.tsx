@@ -1,5 +1,5 @@
-import { getCatApi } from "../../api/Api";
-import { components, operations } from "../../api/CatApi";
+import { components } from "../../api/CatApi";
+import { delSquad, renameSquad } from "../../api/Methods";
 import { FleetMember } from "./FleetMember";
 import { EditFleetObjectCollapse } from "./utils/EditFleetObjectCollapse";
 import { FleetDroppable } from "./utils/FleetDroppable";
@@ -14,43 +14,6 @@ export declare interface SquadProps {
   wing_id: number;
   squad: components["schemas"]["FleetSquad"];
   updating?: Array<number>;
-}
-
-async function renameSquad(fleetID: number, squadID: number, newName: string) {
-  const { PUT } = getCatApi();
-
-  const query: operations["aacat_api_rename_squad"]["parameters"]["query"] = {
-    name: newName,
-  };
-
-  const { data, error } = await PUT("/cat/api/fleets/{fleet_id}/squad/{squad_id}", {
-    params: {
-      path: { fleet_id: fleetID, squad_id: squadID },
-      query: query,
-    },
-  });
-
-  if (error) {
-    console.log(error);
-  } else {
-    console.log(data);
-  }
-}
-
-async function delSquad(fleet_id: number, squadID: number) {
-  const { DELETE } = getCatApi();
-
-  const { data, error } = await DELETE("/cat/api/fleets/{fleet_id}/squad/{squad_id}", {
-    params: {
-      path: { fleet_id: fleet_id, squad_id: squadID },
-    },
-  });
-
-  if (error) {
-    console.log(error);
-  } else {
-    console.log(data);
-  }
 }
 
 export function FleetSquad({ squad, wing_id, updating }: SquadProps) {

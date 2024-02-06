@@ -1,5 +1,5 @@
-import { getCatApi } from "../../api/Api";
 import { components } from "../../api/CatApi";
+import { kickMember } from "../../api/Methods";
 import { EditFleetObjectCollapse } from "./utils/EditFleetObjectCollapse";
 import { Draggable, DraggableStyle } from "@hello-pangea/dnd";
 import { CSSProperties } from "react";
@@ -13,22 +13,6 @@ export declare interface FleetMemberProps {
   icon?: string;
   index: number;
   updating?: boolean;
-}
-
-async function kickMember(fleetID: number, characterID: number) {
-  const { DELETE } = getCatApi();
-
-  const { data, error } = await DELETE("/cat/api/fleets/{fleet_id}/kick/{character_id}", {
-    params: {
-      path: { fleet_id: fleetID, character_id: characterID },
-    },
-  });
-
-  if (error) {
-    console.log(error);
-  } else {
-    console.log(data);
-  }
 }
 
 const getItemStyle = (

@@ -1,5 +1,5 @@
-import { getCatApi } from "../../api/Api";
-import { components, operations } from "../../api/CatApi";
+import { components } from "../../api/CatApi";
+import { addWing, getFleetStructure, moveMember } from "../../api/Methods";
 import { FleetMember } from "./FleetMember";
 import { FleetWing } from "./FleetWing";
 import { EditFleetObjectCollapse } from "./utils/EditFleetObjectCollapse";
@@ -14,72 +14,6 @@ import OverlayTrigger from "react-bootstrap/esm/OverlayTrigger";
 import Tooltip from "react-bootstrap/esm/Tooltip";
 // import { useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-
-async function addWing(fleet_id: number) {
-  const { POST } = getCatApi();
-
-  const { data, error } = await POST("/cat/api/fleets/{fleet_id}/wing", {
-    params: {
-      path: { fleet_id: fleet_id },
-    },
-  });
-
-  if (error) {
-    console.log(error);
-  } else {
-    console.log(data);
-  }
-}
-
-async function moveMember(fleet_id: number, character_id: number, role: string) {
-  const { PUT } = getCatApi();
-
-  const roleData = role.split("-");
-  const fleetRole = roleData[0] as components["schemas"]["FleetRoles"];
-  const fleetWing = roleData[1];
-  const fleetSquad = roleData[2];
-
-  const query: operations["aacat_api_move_fleet_member"]["parameters"]["query"] = {
-    role: fleetRole,
-  };
-
-  if (fleetSquad) {
-    query.squad_id = +fleetSquad;
-  }
-
-  if (fleetWing) {
-    query.wing_id = +fleetWing;
-  }
-
-  const { data, error } = await PUT("/cat/api/fleets/{fleet_id}/move/{character_id}", {
-    params: {
-      path: { fleet_id: fleet_id, character_id: character_id },
-      query: query,
-    },
-  });
-
-  if (error) {
-    console.log(error);
-  } else {
-    console.log(data);
-  }
-}
-
-async function getFleetStructure(fleetID: number) {
-  const { GET } = getCatApi();
-
-  const { data, error } = await GET("/cat/api/fleets/{fleet_id}/structure", {
-    params: {
-      path: { fleet_id: fleetID },
-    },
-  });
-  if (error) {
-    console.log(error);
-  } else {
-    //console.log("COMP:", data);
-    return data;
-  }
-}
 
 export function Fleet() {
   const { fleetID } = useParams();

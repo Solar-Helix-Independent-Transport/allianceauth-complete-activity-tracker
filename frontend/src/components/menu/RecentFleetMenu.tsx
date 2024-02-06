@@ -4,20 +4,18 @@ import { useParams } from "react-router-dom";
 
 const menuRoot = document.getElementById("nav-left");
 
-const FleetMenu = () => {
-  console.log("Menu!");
+const RecentFleetMenu = () => {
   const { fleetID } = useParams();
   if (!menuRoot) {
     return <></>;
   }
   return ReactDOM.createPortal(
     <>
-      <FleetNavItem text={" "} url={`/cat`} headerIcon="fa-circle-left" />
-      <FleetNavItem text={"Status"} url={`/cat/${fleetID}/status`} />
-      <FleetNavItem text={"Structure"} url={`/cat/${fleetID}/structure`} />
+      <div className="vr mx-3 "></div>
+      <FleetNavItem text={"Status"} url={`/cat/recent/${fleetID}/status`} />
     </>,
     menuRoot
   );
 };
 
-export { FleetMenu };
+export { RecentFleetMenu };

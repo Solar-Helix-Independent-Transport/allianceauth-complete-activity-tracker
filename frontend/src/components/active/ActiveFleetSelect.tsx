@@ -1,12 +1,11 @@
-import ActiveFleetList from "../components/ActiveFleetList";
-import TrackFleetSearch from "../components/TrackFleetSearch";
+import ActiveFleetList from "./ActiveFleetList";
+import TrackFleetSearch from "./TrackFleetSearch";
 import { Col } from "react-bootstrap";
 
-const FleetSelect = () => {
+const ActiveFleetSelect = () => {
   return (
     <>
       <Col>
-        <h1>Fleets</h1>
         <div className="d-flex justify-content-center align-items-center flex-row flex-wrap">
           <TrackFleetSearch />
           <ActiveFleetList />
@@ -16,4 +15,4 @@ const FleetSelect = () => {
   );
 };
 
-export default FleetSelect;
+export default ActiveFleetSelect;

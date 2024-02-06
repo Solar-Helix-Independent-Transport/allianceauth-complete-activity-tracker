@@ -1,26 +1,10 @@
-import { getCatApi } from "../api/Api";
+import { performTrackFleetRequest } from "../../api/Methods";
 import TrackFleetSelect from "./TrackFleetSelect";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 
-const performTrackFleetRequest = async (characterID: number) => {
-  const { POST } = getCatApi();
-
-  const { data, error } = await POST("/cat/api/fleets/{character_id}/track", {
-    params: {
-      path: { character_id: characterID },
-    },
-  });
-  if (error) {
-    console.log(error);
-  } else {
-    console.log(data);
-    return data;
-  }
-};
-//performTrackFleetRequest(inputValue);
 const TrackFleetSearch = () => {
   const [character, setCharacter] = useState(0);
   const { data, status, refetch, isFetching } = useQuery({

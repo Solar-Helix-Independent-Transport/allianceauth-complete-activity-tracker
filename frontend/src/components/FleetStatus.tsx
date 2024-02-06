@@ -1,4 +1,4 @@
-import FleetCharacters from "../components/stats/FleetChars";
+import FleetCharacters from "./stats/FleetChars";
 
 const FleetStatus = () => {
   return (

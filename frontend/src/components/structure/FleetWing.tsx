@@ -1,5 +1,5 @@
-import { getCatApi } from "../../api/Api";
-import { components, operations } from "../../api/CatApi";
+import { components } from "../../api/CatApi";
+import { addSquad, delWing, renameWing } from "../../api/Methods";
 import { FleetMember } from "./FleetMember";
 import { FleetSquad } from "./FleetSquad";
 import { EditFleetObjectCollapse } from "./utils/EditFleetObjectCollapse";
@@ -14,59 +14,6 @@ import { useParams } from "react-router-dom";
 export declare interface WingProps {
   wing: components["schemas"]["FleetWing"];
   updating?: Array<number>;
-}
-
-async function renameWing(fleetID: number, wingID: number, newName: string) {
-  const { PUT } = getCatApi();
-
-  const query: operations["aacat_api_rename_wing"]["parameters"]["query"] = {
-    name: newName,
-  };
-
-  const { data, error } = await PUT("/cat/api/fleets/{fleet_id}/wing/{wing_id}", {
-    params: {
-      path: { fleet_id: fleetID, wing_id: wingID },
-      query: query,
-    },
-  });
-
-  if (error) {
-    console.log(error);
-  } else {
-    console.log(data);
-  }
-}
-
-async function addSquad(fleet_id: number, wingID: number) {
-  const { POST } = getCatApi();
-
-  const { data, error } = await POST("/cat/api/fleets/{fleet_id}/wing/{wing_id}/squad", {
-    params: {
-      path: { fleet_id: fleet_id, wing_id: wingID },
-    },
-  });
-
-  if (error) {
-    console.log(error);
-  } else {
-    console.log(data);
-  }
-}
-
-async function delWing(fleet_id: number, wingID: number) {
-  const { DELETE } = getCatApi();
-
-  const { data, error } = await DELETE("/cat/api/fleets/{fleet_id}/wing/{wing_id}", {
-    params: {
-      path: { fleet_id: fleet_id, wing_id: wingID },
-    },
-  });
-
-  if (error) {
-    console.log(error);
-  } else {
-    console.log(data);
-  }
 }
 
 export function FleetWing({ wing, updating }: WingProps) {

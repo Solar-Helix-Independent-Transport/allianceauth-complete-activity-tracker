@@ -1,22 +1,10 @@
-import { getCatApi } from "../api/Api";
-import { components } from "../api/CatApi";
-import CloseFleetButton from "./buttons/CloseFleet";
+import { components } from "../../api/CatApi";
+import { getActiveFleetList } from "../../api/Methods";
+import CloseFleetButton from "../buttons/CloseFleet";
 import { useQuery } from "@tanstack/react-query";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 import { LinkContainer } from "react-router-bootstrap";
-
-async function getActiveFleetList() {
-  const { GET } = getCatApi();
-
-  const { data, error } = await GET("/cat/api/fleets/active/");
-  if (error) {
-    console.log(error);
-  } else {
-    console.log(data);
-    return data;
-  }
-}
 
 const ActiveFleetList = () => {
   const { data } = useQuery({
@@ -36,7 +24,7 @@ const ActiveFleetList = () => {
         <Card.Body>
           <Card.Title>{fleet?.name}</Card.Title>
           <hr />
-          <LinkContainer to={`/cat/${fleet.eve_fleet_id}/`}>
+          <LinkContainer to={`/cat/active/${fleet.eve_fleet_id}/`}>
             <Button variant="primary" className="w-100">
               View Fleet {fleet.eve_fleet_id}
             </Button>

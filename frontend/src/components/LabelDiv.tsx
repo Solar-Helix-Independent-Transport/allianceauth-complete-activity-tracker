@@ -3,7 +3,7 @@ const LabelDiv = ({
   value,
 }: {
   label: string | null | undefined;
-  value: string | null | undefined;
+  value: string | number | null | undefined;
 }) => {
   return (
     <div className="d-flex flex-row">

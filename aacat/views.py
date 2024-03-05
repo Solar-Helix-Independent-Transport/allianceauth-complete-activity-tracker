@@ -1,4 +1,3 @@
-
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import redirect, render
 from django.utils.translation import gettext_lazy as _
@@ -27,6 +26,6 @@ def react_main(request):
         context={
             "version": __version__,
             "app_name": "aacat",
-            "page_title": "Fleet Tool"
+            "page_title": _("Fleet Tools")
         }
     )

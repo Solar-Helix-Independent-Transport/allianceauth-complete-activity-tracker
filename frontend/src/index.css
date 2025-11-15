@@ -7,6 +7,6 @@
 
 .fleet-refetch-countdown {
   /* ... */
-  animation: fleet-refetch-anim 6s linear forwards;
+  animation: fleet-refetch-anim 5s linear forwards;
   transform-origin: left center;
 }

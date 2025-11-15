@@ -62,5 +62,4 @@ class SearchEndpoints():
         def character_search(request, search_text: str, limit: int = 10):
             if not request.user.has_perm('aacat.edit_fleets'):
                 return 403, "No Perms"
-
             return models.EveCharacter.objects.filter(character_name__icontains=search_text)[:limit]

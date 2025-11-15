@@ -7,6 +7,7 @@ from allianceauth.eveonline.models import EveCharacter
 from allianceauth.services.tasks import QueueOnce
 from bravado.exception import (HTTPBadGateway, HTTPGatewayTimeout,
                                HTTPNotFound, HTTPServiceUnavailable)
+from aiopenapi3.errors import HTTPClientError, HTTPServerError, HTTPStatusError
 from celery import shared_task
 from celery_once import AlreadyQueued
 from django.contrib.auth.models import Permission, User
@@ -49,9 +50,11 @@ def check_all_watched_characters(self):
 @shared_task(bind=True, base=QueueOnce, max_retries=3)
 def check_character_online(self, character_id):
     token = Token.get_token(character_id, ['esi-location.read_online.v1'])
-    online_status = providers.esi.client.Location.get_characters_character_id_online(character_id=character_id,
-                                                                                     token=token.valid_access_token()).result()
-    if online_status.get('online', False):
+    online_status = providers.esi.client.Location.GetCharactersCharacterIdOnline(
+        character_id=character_id,
+        token=token
+    ).result()
+    if online_status.online:
         logger.info(F"HEY!!!! I'm online! {token.character_name}")
         check_character_fleet.delay(character_id)
     else:
@@ -64,36 +67,45 @@ def check_character_fleet(self, character_id):
     logger.info(F"{token.character_name} checking fleets")
 
     try:
-        fleet_details = providers.esi.client.Fleets.get_characters_character_id_fleet(character_id=character_id,
-                                                                                      token=token.valid_access_token()).result()
-        logger.info(
-            f"{token.character_name} in the the fleet {fleet_details.get('fleet_id')}")
+        fleet_details = providers.esi.client.Fleets.GetCharactersCharacterIdFleet(
+            character_id=character_id,
+            token=token
+        ).result()
+    except HTTPClientError as e:
+        print(e)
+    
+    logger.info(
+        f"{token.character_name} in the the fleet {fleet_details.fleet_id}")
 
-        fleet_characters = providers.esi.client.Fleets.get_fleets_fleet_id_members(fleet_id=fleet_details.get('fleet_id'),
-                                                                                   token=token.valid_access_token()).result()
+    fleet_characters = providers.esi.client.Fleets.GetFleetsFleetIdMembers(
+        fleet_id=fleet_details.fleet_id,
+        token=token
+    ).result()
 
-        logger.info(
-            f"{token.character_name} the boss of the fleet {fleet_details.get('fleet_id')}")
+    logger.info(
+        f"{token.character_name} the boss of the fleet {fleet_details.fleet_id}")
 
-        char = EveCharacter.objects.get(character_id=character_id)
-        fleet, created = Fleet.objects.get_or_create(boss=char,
-                                                     eve_fleet_id=fleet_details.get(
-                                                         'fleet_id'),
-                                                     defaults={'start_time': timezone.now(),
-                                                               "name": f"{char}'s Fleet",
-                                                               "fc": char})
-        if not created:
-            if fleet.end_time:
-                fleet.end_time = None
-                fleet.save()
+    char = EveCharacter.objects.get(character_id=character_id)
+    fleet, created = Fleet.objects.get_or_create(
+        boss=char,
+        eve_fleet_id=fleet_details.fleet_id,
+        defaults={'start_time': timezone.now(),
+                    "name": f"{char}'s Fleet",
+                    "fc": char}
+    )
+    if not created:
+        if fleet.end_time:
+            fleet.end_time = None
+            fleet.save()
 
-        snapshot_fleet.apply_async(args=[character_id,
-                                         fleet_details.get('fleet_id')],
-                                   priority=1)
+    snapshot_fleet.apply_async(
+        args=[
+            character_id,
+            fleet_details.fleet_id
+        ],
+        priority=1
+    )
 
-    except Exception as e:
-        logger.error(e, stack_info=True)
-        logger.error(f"I'm not in a fleet or i am not the boss.")
 
 
 @shared_task(bind=True)
@@ -127,8 +139,10 @@ def snapshot_fleet(self, character_id, fleet_id):
     logger.info(f"Starting snap-shotting fleet {fleet_id}, {character_id}")
 
     try:
-        fleet_characters = providers.esi.client.Fleets.get_fleets_fleet_id_members(fleet_id=fleet_id,
-                                                                                   token=token.valid_access_token()).result()
+        fleet_characters = providers.esi.client.Fleets.GetFleetsFleetIdMembers(
+            fleet_id=fleet_id,
+            token=token
+        ).result()
         _timer.append(f"2: {time.perf_counter()-_timer[0]}")
 
         new_events = []
@@ -140,11 +154,11 @@ def snapshot_fleet(self, character_id, fleet_id):
         fc_system_id = 0
 
         for f in fleet_characters:
-            char_ids.add(f['character_id'])
-            type_ids.add(f['ship_type_id'])
+            char_ids.add(f.character_id)
+            type_ids.add(f.ship_type_id)
             if fleet.fc:
-                if f['character_id'] == fleet.fc.character_id:
-                    fc_system_id = f['solar_system_id']
+                if f.character_id == fleet.fc.character_id:
+                    fc_system_id = f.solar_system_id
 
         _timer.append(f"3: {time.perf_counter()-_timer[0]}")
 
@@ -177,35 +191,33 @@ def snapshot_fleet(self, character_id, fleet_id):
 
         for c in fleet_characters:
             if fc_system_id:
-                if c.get('solar_system_id') not in system_distances:
+                if c.solar_system_id not in system_distances:
                     try:
                         _1 = time.perf_counter()
-                        rl = route_length(fc_system_id, c.get(
-                            'solar_system_id'),
+                        rl = route_length(fc_system_id, c.solar_system_id,
                             edges=extra_edges,
                             static_cache=True)
                         _timer.append(
-                            f"8 {fc_system_id}>{c.get('solar_system_id')} - {rl}: {time.perf_counter()-_1}")
+                            f"8 {fc_system_id}>{c.solar_system_id} - {rl}: {time.perf_counter()-_1}")
                     except NetworkXNoPath:
                         rl = -1
-                    system_distances[c.get('solar_system_id')] = rl
+                    system_distances[c.solar_system_id] = rl
 
             try:
                 _evnt = FleetEvent(time=current_time,
                                    fleet=fleet,
-                                   character_id=c.get('character_id'),
-                                   character_name_id=chars[c.get(
-                                       'character_id')],
-                                   join_time=c.get('join_time'),
-                                   ship_id=c.get('ship_type_id'),
-                                   ship_type_id=c.get('ship_type_id'),
-                                   role=c.get('role'),
-                                   squad_id=c.get('squad_id'),
-                                   wing_id=c.get('wing_id', None),
-                                   takes_fleet_warp=c.get('takes_fleet_warp'),
-                                   solar_system_id=c.get('solar_system_id'),
+                                   character_id=c.character_id,
+                                   character_name_id=chars[c.character_id],
+                                   join_time=c.join_time,
+                                   ship_id=c.ship_type_id,
+                                   ship_type_id=c.ship_type_id,
+                                   role=c.role,
+                                   squad_id=c.squad_id,
+                                   wing_id=c.wing_id,
+                                   takes_fleet_warp=c.takes_fleet_warp,
+                                   solar_system_id=c.solar_system_id,
                                    distance_from_fc=system_distances.get(
-                                       c.get('solar_system_id'), -2)
+                                       c.solar_system_id, -2)
                                    )
 
                 new_events.append(_evnt)
@@ -233,10 +245,10 @@ def snapshot_fleet(self, character_id, fleet_id):
         logger.error(e)
         # TODO check for retry amount and close fleet on errors?
 
-    except Exception as e:
-        logger.error(f"{e.__class__.__name__} {character_id} {fleet_id} ")
-        logger.error(e, stack_info=True)
-        # TODO check for retry amount and close fleet on hard errors?
+    # except Exception as e:
+    #     logger.error(f"{e.__class__.__name__} {character_id} {fleet_id} ")
+    #     logger.error(e, stack_info=True)
+    #     # TODO check for retry amount and close fleet on hard errors?
     _timer.append(f"10: {time.perf_counter()-_timer[0]}")
     bootstrap_snapshot_fleet.apply_async(args=[character_id,
                                                fleet_id],

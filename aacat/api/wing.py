@@ -24,9 +24,9 @@ class WingEndpoints():
             fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
             token = Token.get_token(fleet.boss.character_id, [
                                     'esi-fleets.write_fleet.v1'])
-            fleet = providers.esi.client.Fleets.post_fleets_fleet_id_wings(
+            fleet = providers.esi.client.Fleets.PostFleetsFleetIdWings(
                 fleet_id=fleet_id,
-                token=token.valid_access_token()
+                token=token
             ).result()
             return fleet
 
@@ -45,10 +45,10 @@ class WingEndpoints():
             fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
             token = Token.get_token(fleet.boss.character_id, [
                                     'esi-fleets.write_fleet.v1'])
-            wing_deleted = providers.esi.client.Fleets.delete_fleets_fleet_id_wings_wing_id(
+            wing_deleted = providers.esi.client.Fleets.DeleteFleetsFleetIdWingsWingId(
                 fleet_id=fleet_id,
                 wing_id=wing_id,
-                token=token.valid_access_token()
+                token=token
             ).result()
             return wing_deleted
 
@@ -67,12 +67,12 @@ class WingEndpoints():
             fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
             token = Token.get_token(fleet.boss.character_id, [
                                     'esi-fleets.write_fleet.v1'])
-            wing_renamed = providers.esi.client.Fleets.put_fleets_fleet_id_wings_wing_id(
+            wing_renamed = providers.esi.client.Fleets.PutFleetsFleetIdWingsWingId(
                 fleet_id=fleet_id,
                 wing_id=wing_id,
-                naming={
+                body={
                     "name": name
                 },
-                token=token.valid_access_token()
+                token=token
             ).result()
             return wing_renamed

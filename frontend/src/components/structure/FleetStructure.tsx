@@ -7,6 +7,7 @@ import { FleetDroppable } from "./utils/FleetDroppable";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { Form, ToggleButton } from "react-bootstrap";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 import ProgressBar from "react-bootstrap/ProgressBar";
@@ -18,17 +19,19 @@ import { useParams } from "react-router-dom";
 export function Fleet() {
   const { fleetID } = useParams();
   const [updatingCharacters, setUpdatingCharacters] = useState<Array<number>>([]);
+  const [keepUpdating, setkeepUpdating] = useState<boolean>(false);
 
   // const queryClient = useQueryClient();
 
-  const { data, isFetching } = useQuery({
+  const { data, isFetching, refetch } = useQuery({
     queryKey: ["getFleetStructure", fleetID],
     queryFn: async () => {
       const data = await getFleetStructure(fleetID ? +fleetID : 0);
       setUpdatingCharacters([]);
       return data;
     },
-    refetchInterval: 6000,
+    refetchInterval: 5000,
+    enabled: keepUpdating,
   });
 
   async function handleDragEnd(result: DropResult) {
@@ -46,8 +49,31 @@ export function Fleet() {
     <Card className="m-1">
       <Card.Body>
         <div className="d-flex flex-row align-items-center">
-          <h5>Fleet Structure</h5>
-          <div className="ms-auto">
+          <h5 className="me-auto">Fleet Structure</h5>
+
+          <Form.Check // prettier-ignore
+            type="switch"
+            id="custom-switch"
+            // label="Polling Update"
+            onChange={(e) => {
+              setkeepUpdating(e.target.checked);
+            }}
+          />
+
+          {!keepUpdating && (
+            <Button
+              variant={""}
+              size={"sm"}
+              className="mx-1"
+              onClick={() => {
+                refetch();
+              }}
+            >
+              <i className="fa fa-refresh" aria-hidden="true"></i>
+            </Button>
+          )}
+
+          <div>
             {data?.editable && (
               <EditFleetObjectCollapse variant={undefined} id={`edit-fleet`} icon={"fa-bars"}>
                 <div className="d-flex flex-row me-2">
@@ -75,7 +101,7 @@ export function Fleet() {
           <div className={"my-2 w-100"}>
             <ProgressBar
               now={100}
-              style={{ height: "1px", opacity: ".25" }}
+              style={{ height: "2px", opacity: ".25" }}
               variant={"light"}
               className={`${isFetching ? "" : "fleet-refetch-countdown"}`}
               animated={isFetching}

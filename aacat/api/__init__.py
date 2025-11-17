@@ -25,7 +25,7 @@ from .wing import WingEndpoints
 logger = logging.getLogger(__name__)
 
 api = NinjaAPI(title="CAT API", version="0.0.1",
-               urls_namespace='aacat:api', auth=django_auth, csrf=True,
+               urls_namespace='aacat:api', auth=django_auth,
                )  # openapi_url=settings.DEBUG and "/openapi.json" or "")
 
 

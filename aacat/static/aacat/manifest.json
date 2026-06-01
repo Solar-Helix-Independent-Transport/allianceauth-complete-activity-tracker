@@ -1,23 +1,26 @@
 {
-  "_@libs-BDjvwRS-.js": {
-    "file": "assets/@libs-BDjvwRS-.js"
-  },
-  "_@react-router-YQvZJTtx.js": {
-    "file": "assets/@react-router-YQvZJTtx.js",
+  "_@libs-PTMDAZJ5.js": {
+    "file": "assets/@libs-PTMDAZJ5.js",
+    "name": "@libs",
     "imports": [
-      "_@libs-BDjvwRS-.js"
+      "_@react-router-D-9CCVG5.js"
     ]
   },
+  "_@react-router-D-9CCVG5.js": {
+    "file": "assets/@react-router-D-9CCVG5.js",
+    "name": "@react-router"
+  },
   "index.html": {
-    "css": [
-      "assets/index-J7_kJ2_h.css"
-    ],
-    "file": "assets/index-qEqfUiKl.js",
-    "imports": [
-      "_@libs-BDjvwRS-.js",
-      "_@react-router-YQvZJTtx.js"
-    ],
+    "file": "assets/index-MIh0UoYj.js",
+    "name": "index",
+    "src": "index.html",
     "isEntry": true,
-    "src": "index.html"
+    "imports": [
+      "_@libs-PTMDAZJ5.js",
+      "_@react-router-D-9CCVG5.js"
+    ],
+    "css": [
+      "assets/index-CTDnuxKH.css"
+    ]
   }
 }

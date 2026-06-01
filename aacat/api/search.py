@@ -17,7 +17,7 @@ class SearchEndpoints():
             tags=["Search"]
         )
         def system_search(request, search_text: str, limit: int = 10):
-            if not request.user.has_perm('aacat.edit_fleets'):
+            if not request.user.has_perm('aacat.view_fleets'):
                 return 403, "No Perms"
 
             return SolarSystem.objects.filter(name__icontains=search_text).values("name", "id", cat=Value("System", output_field=CharField()))[:limit]
@@ -28,7 +28,7 @@ class SearchEndpoints():
             tags=["Search"]
         )
         def constellation_search(request, search_text: str, limit: int = 10):
-            if not request.user.has_perm('aacat.edit_fleets'):
+            if not request.user.has_perm('aacat.view_fleets'):
                 return 403, "No Perms"
 
             return Constellation.objects.filter(name__icontains=search_text).values("name", "id", cat=Value("Constellation", output_field=CharField()))[:limit]
@@ -39,7 +39,7 @@ class SearchEndpoints():
             tags=["Search"]
         )
         def region_search(request, search_text: str, limit: int = 10):
-            if not request.user.has_perm('aacat.edit_fleets'):
+            if not request.user.has_perm('aacat.view_fleets'):
                 return 403, "No Perms"
 
             return Region.objects.filter(name__icontains=search_text).values("name", "id", cat=Value("Region", output_field=CharField()))[:limit]
@@ -50,7 +50,7 @@ class SearchEndpoints():
             tags=["Search"]
         )
         def group_search(request, search_text: str, limit: int = 10):
-            if not request.user.has_perm('aacat.edit_fleets'):
+            if not request.user.has_perm('aacat.view_fleets'):
                 return 403, "No Perms"
 
             return models.Group.objects.filter(name__icontains=search_text).values("name", "id")[:limit]
@@ -61,6 +61,6 @@ class SearchEndpoints():
             tags=["Search"]
         )
         def character_search(request, search_text: str, limit: int = 10):
-            if not request.user.has_perm('aacat.edit_fleets'):
+            if not request.user.has_perm('aacat.view_fleets'):
                 return 403, "No Perms"
             return models.EveCharacter.objects.filter(character_name__icontains=search_text)[:limit]

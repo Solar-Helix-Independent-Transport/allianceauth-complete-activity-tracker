@@ -47,7 +47,7 @@ def track_me(request):
     """
         Track any fleeets currently being run by the logged in user.
     """
-    if not request.user.has_perm('aacat.edit_fleets'):
+    if not request.user.has_perm('aacat.create_fleets'):
         return 403, "No Perms"
     char_ownerships = request.user.character_ownerships.all()
     characters = []
@@ -68,7 +68,7 @@ def track_character(request, character_id: int):
     """
         Track the fleet being run by the character_id, if they are in a fleet.
     """
-    if not request.user.has_perm('aacat.edit_fleets'):
+    if not request.user.has_perm('aacat.create_fleets'):
         return 403, "No Perms"
     character = EveCharacter.objects.get(character_id=character_id)
     check_character_online.apply_async(
@@ -85,7 +85,7 @@ def end_fleet(request, fleet_id: int):
     """
         Stop Tracking a fleet.
     """
-    if not request.user.has_perm('aacat.edit_fleets'):
+    if not request.user.has_perm('aacat.create_fleets'):
         return 403, "No Perms"
     fleets = models.Fleet.objects.filter(eve_fleet_id=fleet_id)
     out = []
@@ -105,7 +105,7 @@ def restart_fleet_tasks(request, fleet_id: int):
     """
         Restart any fleet tasks that may have failed.
     """
-    if not request.user.has_perm('aacat.edit_fleets'):
+    if not request.user.has_perm('aacat.create_fleets'):
         return 403, "No Perms"
     fleets = models.Fleet.objects.filter(eve_fleet_id=fleet_id)
     out = []
@@ -125,7 +125,7 @@ def get_fleets_active(request, limit: int = 50):
     """
         Show all actively tracked fleets
     """
-    if not request.user.has_perm('aacat.edit_fleets'):
+    if not request.user.has_perm('aacat.view_fleets'):
         return 403, "No Perms"
 
     return models.Fleet.objects.filter(end_time__isnull=True)[:limit]
@@ -140,7 +140,7 @@ def get_fleets_recent(request, days_look_back: int = 90):
     """
         Show a list of previously tracked fleets
     """
-    if not request.user.has_perm('aacat.edit_fleets'):
+    if not request.user.has_perm('aacat.view_fleets'):
         return 403, "No Perms"
 
     _start = timezone.now() - timedelta(days=days_look_back)
@@ -156,7 +156,7 @@ def get_fleet_recent_snapshot(request, fleet_id: int):
     """
         Provide teh most recent snapshot of a fleet
     """
-    if not request.user.has_perm('aacat.edit_fleets'):
+    if not request.user.has_perm('aacat.view_fleets'):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -169,14 +169,14 @@ def get_fleet_recent_snapshot(request, fleet_id: int):
 
 @api.get(
     "/fleets/{fleet_id}/time_diff/{minutes}/mains",
-    response={200: dict},
+    response={200: dict, **schema.error_responses},
     tags=["Stats"]
 )
 def get_fleet_time_diff_mains(request, fleet_id: int, minutes: int):
     """
         Provide the rolling changes of a fleets members in the time period
     """
-    if not request.user.has_perm('aacat.edit_fleets'):
+    if not request.user.has_perm('aacat.view_fleets'):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -233,7 +233,7 @@ def get_fleet_character_changes(
     """
         Provide an overview of fleet members who have left/joined late
     """
-    if not request.user.has_perm('aacat.edit_fleets'):
+    if not request.user.has_perm('aacat.view_fleets'):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -372,7 +372,7 @@ def get_fleet_details(request, fleet_id: int):
     """
         Get the fleet settigns and MOTD
     """
-    if not request.user.has_perm('aacat.edit_fleets'):
+    if not request.user.has_perm('aacat.view_fleets'):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)

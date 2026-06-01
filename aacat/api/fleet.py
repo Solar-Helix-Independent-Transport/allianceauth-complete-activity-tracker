@@ -75,7 +75,7 @@ class FleetStatsEndpoints():
             """
                 Provide the most recent snapshot of a fleet grouped by ship types.
             """
-            if not request.user.has_perm('aacat.edit_fleets'):
+            if not request.user.has_perm('aacat.view_fleets'):
                 return 403, "No Perms"
 
             fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -110,7 +110,7 @@ class FleetStatsEndpoints():
             """
                 Provide timeline data for graph.
             """
-            if not request.user.has_perm('aacat.edit_fleets'):
+            if not request.user.has_perm('aacat.view_fleets'):
                 return 403, "No Perms"
 
             fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -141,7 +141,7 @@ class FleetStatsEndpoints():
             Returns keys (top-10 ship types), one data point per snapshot, and
             elapsed-time labels for the x-axis.
             """
-            if not request.user.has_perm('aacat.edit_fleets'):
+            if not request.user.has_perm('aacat.view_fleets'):
                 return 403, "No Perms"
 
             fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -185,7 +185,7 @@ class FleetStatsEndpoints():
             """
             Time-series fleet member distribution by solar system for a stream chart.
             """
-            if not request.user.has_perm('aacat.edit_fleets'):
+            if not request.user.has_perm('aacat.view_fleets'):
                 return 403, "No Perms"
 
             fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -235,7 +235,7 @@ class FleetStatsEndpoints():
             """
                 Provide the rolling changes of a fleet's comp in the time period.
             """
-            if not request.user.has_perm('aacat.edit_fleets'):
+            if not request.user.has_perm('aacat.view_fleets'):
                 return 403, "No Perms"
 
             fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
@@ -276,7 +276,7 @@ class FleetStatsEndpoints():
             """
                 Get the fleet hierarchy.
             """
-            if not request.user.has_perm('aacat.edit_fleets'):
+            if not request.user.has_perm('aacat.view_fleets'):
                 return 403, "No Perms"
 
             fleet = models.Fleet.objects.filter(eve_fleet_id=fleet_id).last()

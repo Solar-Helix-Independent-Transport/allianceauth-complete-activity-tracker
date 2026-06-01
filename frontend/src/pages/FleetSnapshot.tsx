@@ -13,6 +13,7 @@ import {
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Card from "react-bootstrap/Card";
 import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
@@ -215,12 +216,15 @@ function FleetSystemChart({ fleetId }: { fleetId: number }) {
 
 const FleetSnapshot = () => {
   const fleetId = useFleetId();
+  const { pathname } = useLocation();
+  const isActive = pathname.includes("/active/");
   const [sorting, setSorting] = useState<SortingState>([{ id: "role", desc: false }]);
   const [globalFilter, setGlobalFilter] = useState("");
 
   const { data, isPending, error } = useQuery({
     queryKey: ["getFleetSnapshot", fleetId],
     queryFn: () => getFleetSnapshot(fleetId),
+    refetchInterval: isActive ? 30_000 : false,
   });
 
   const table = useReactTable({

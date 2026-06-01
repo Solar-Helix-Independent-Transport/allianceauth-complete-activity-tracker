@@ -18,7 +18,7 @@ def add_char(request, token):
 
 
 @login_required
-@permission_required("aacat.edit_fleets")
+@permission_required("aacat.view_fleets")
 def react_main(request):
     return render(
         request,

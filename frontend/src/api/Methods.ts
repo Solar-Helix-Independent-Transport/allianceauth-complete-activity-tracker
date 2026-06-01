@@ -154,6 +154,33 @@ export async function delWing(fleet_id: number, wingID: number) {
   if (error) throw error;
 }
 
+export interface FleetStreamData {
+  keys: string[];
+  data: Record<string, number>[];
+  times: string[];
+}
+
+export async function getFleetSystemStream(fleetID: number): Promise<FleetStreamData> {
+  const response = await fetch(`/cat/api/fleets/${fleetID}/system_stream`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+export async function getFleetStream(fleetID: number): Promise<FleetStreamData> {
+  const response = await fetch(`/cat/api/fleets/${fleetID}/stream`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+export async function getFleetSnapshot(fleetID: number) {
+  const { GET } = getCatApi();
+  const { data, error } = await GET("/cat/api/fleets/{fleet_id}/snapshot", {
+    params: { path: { fleet_id: fleetID } },
+  });
+  if (error) throw error;
+  return data;
+}
+
 export interface ShipCount {
   name: string;
   count: number;

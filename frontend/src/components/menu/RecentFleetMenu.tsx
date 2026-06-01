@@ -12,6 +12,7 @@ const RecentFleetMenu = () => {
   return ReactDOM.createPortal(
     <>
       <div className="vr mx-4"></div>
+      <FleetNavItem text={"Snapshot"} url={`/cat/recent/${fleetID}/snapshot`} />
       <FleetNavItem text={"Status"} url={`/cat/recent/${fleetID}/status`} />
     </>,
     menuRoot

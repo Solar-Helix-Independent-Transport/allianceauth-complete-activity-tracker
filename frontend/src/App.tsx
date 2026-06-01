@@ -3,6 +3,7 @@ import FleetStatus from "./components/FleetStatus";
 import ActiveFleetSelect from "./components/active/ActiveFleetSelect";
 import RecentFleetSelect from "./components/recent/RecentFleetSelect";
 import ActiveFleetPage from "./pages/ActiveFleetPage";
+import FleetSnapshot from "./pages/FleetSnapshot";
 import FleetStructure from "./pages/FleetStructure";
 import IndexPage from "./pages/IndexPage";
 import RecentFleetPage from "./pages/RecentFleetPage";
@@ -21,12 +22,14 @@ function App() {
             <Route path="active/:fleetID/" element={<ActiveFleetPage />}>
               <Route path="structure" element={<FleetStructure />} />
               <Route path="status" element={<FleetStatus />} />
+              <Route path="snapshot" element={<FleetSnapshot />} />
               <Route index element={<Navigate to="structure" replace />} />
             </Route>
             <Route path="recent" element={<RecentFleetSelect />} />
             <Route path="recent/:fleetID/" element={<RecentFleetPage />}>
               <Route path="status" element={<FleetStatus />} />
-              <Route index element={<Navigate to="status" replace />} />
+              <Route path="snapshot" element={<FleetSnapshot />} />
+              <Route index element={<Navigate to="snapshot" replace />} />
             </Route>
             <Route index element={<Navigate to="active" replace />} />
           </Route>

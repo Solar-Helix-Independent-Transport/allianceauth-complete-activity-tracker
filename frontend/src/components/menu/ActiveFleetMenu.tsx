@@ -12,8 +12,9 @@ const ActiveFleetMenu = () => {
   return ReactDOM.createPortal(
     <>
       <div className="vr"></div>
-      <FleetNavItem text={"Status"} url={`/cat/active/${fleetID}/status`} />
       <FleetNavItem text={"Structure"} url={`/cat/active/${fleetID}/structure`} />
+      <FleetNavItem text={"Snapshot"} url={`/cat/active/${fleetID}/snapshot`} />
+      <FleetNavItem text={"Status"} url={`/cat/active/${fleetID}/status`} />
     </>,
     menuRoot
   );

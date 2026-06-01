@@ -1,6 +1,6 @@
 import logging
 from collections import Counter, defaultdict
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import List
 
 from aacat import providers
@@ -129,6 +129,102 @@ class FleetStatsEndpoints():
                     timeline[name].append({"primary": snap["time"], "secondary": count})
 
             return [{"label": name, "data": data} for name, data in timeline.items()]
+
+        @api.get(
+            "/fleets/{fleet_id}/stream",
+            response={200: dict, **schema.error_responses},
+            tags=["Stats"]
+        )
+        def get_fleet_stream(request, fleet_id: int):
+            """
+            Time-series fleet ship composition shaped for a Nivo stream chart.
+            Returns keys (top-10 ship types), one data point per snapshot, and
+            elapsed-time labels for the x-axis.
+            """
+            if not request.user.has_perm('aacat.edit_fleets'):
+                return 403, "No Perms"
+
+            fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+            if not fleet.snapshots:
+                return {"keys": [], "data": [], "times": []}
+
+            snapshots = sorted(fleet.snapshots, key=lambda s: s["time"])
+
+            all_type_ids = {m["ship_type_id"] for s in snapshots for m in s["members"]}
+            type_info = {t.id: t for t in ItemType.objects.filter(id__in=all_type_ids)}
+
+            # Build per-snapshot ship counts with resolved names
+            snap_counts = []
+            all_names: set = set()
+            for snap in snapshots:
+                counts = Counter(m["ship_type_id"] for m in snap["members"])
+                named = {}
+                for type_id, count in counts.items():
+                    t = type_info.get(type_id)
+                    name = t.name if t else f"Unknown ({type_id})"
+                    named[name] = count
+                    all_names.add(name)
+                snap_counts.append({"time": snap["time"], "counts": named})
+
+            # Rank by total appearances and keep top 10
+            totals = {n: sum(s["counts"].get(n, 0) for s in snap_counts) for n in all_names}
+            keys = sorted(all_names, key=lambda k: -totals[k])[:10]
+
+            data = [{k: s["counts"].get(k, 0) for k in keys} for s in snap_counts]
+
+            times = [s["time"] for s in snap_counts]
+
+            return {"keys": keys, "data": data, "times": times}
+
+        @api.get(
+            "/fleets/{fleet_id}/system_stream",
+            response={200: dict, **schema.error_responses},
+            tags=["Stats"]
+        )
+        def get_fleet_system_stream(request, fleet_id: int):
+            """
+            Time-series fleet member distribution by solar system for a stream chart.
+            """
+            if not request.user.has_perm('aacat.edit_fleets'):
+                return 403, "No Perms"
+
+            fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+            if not fleet.snapshots:
+                return {"keys": [], "data": [], "times": []}
+
+            snapshots = sorted(fleet.snapshots, key=lambda s: s["time"])
+
+            all_sys_ids = {
+                m["solar_system_id"]
+                for s in snapshots
+                for m in s["members"]
+                if m.get("solar_system_id")
+            }
+            system_info = {s.id: s for s in SDESolarSystem.objects.filter(id__in=all_sys_ids)}
+
+            snap_counts = []
+            all_names: set = set()
+            for snap in snapshots:
+                counts = Counter(
+                    m["solar_system_id"]
+                    for m in snap["members"]
+                    if m.get("solar_system_id")
+                )
+                named = {}
+                for sys_id, count in counts.items():
+                    s = system_info.get(sys_id)
+                    name = s.name if s else f"Unknown ({sys_id})"
+                    named[name] = count
+                    all_names.add(name)
+                snap_counts.append({"time": snap["time"], "counts": named})
+
+            totals = {n: sum(s["counts"].get(n, 0) for s in snap_counts) for n in all_names}
+            keys = sorted(all_names, key=lambda k: -totals[k])[:10]
+
+            data = [{k: s["counts"].get(k, 0) for k in keys} for s in snap_counts]
+            times = [s["time"] for s in snap_counts]
+
+            return {"keys": keys, "data": data, "times": times}
 
         @api.get(
             "/fleets/{fleet_id}/time_diff/{minutes}",

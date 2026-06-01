@@ -58,7 +58,7 @@ class Fleet(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField(blank=True, null=True)
 
-    refresh_time = models.IntegerField(default=10)
+    refresh_time = models.IntegerField(default=30)
     snapshots = models.JSONField(default=list)
     fleet_type = models.ForeignKey(
         FleetType, on_delete=models.SET_NULL, default=None, null=True, blank=True)

@@ -1,48 +1,131 @@
 import { components } from "../../api/CatApi";
 import { addWing, getFleetStructure, moveMember } from "../../api/Methods";
+import { useFleetId } from "../../hooks/useFleetId";
 import { FleetMember } from "./FleetMember";
 import { FleetWing } from "./FleetWing";
 import { EditFleetObjectCollapse } from "./utils/EditFleetObjectCollapse";
 import { FleetDroppable } from "./utils/FleetDroppable";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Form, ToggleButton } from "react-bootstrap";
+import { Form } from "react-bootstrap";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 import ProgressBar from "react-bootstrap/ProgressBar";
 import OverlayTrigger from "react-bootstrap/esm/OverlayTrigger";
 import Tooltip from "react-bootstrap/esm/Tooltip";
-// import { useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+
+type Structure = components["schemas"]["FleetStructure"];
+type SnapshotChar = components["schemas"]["SnapshotCharacter"];
+
+function moveCharacterInStructure(
+  structure: Structure,
+  charId: number,
+  destination: string
+): Structure {
+  const next: Structure = JSON.parse(JSON.stringify(structure));
+
+  let char: SnapshotChar | null = null;
+
+  if (next.commander?.character.character_id === charId) {
+    char = next.commander;
+    next.commander = null;
+  }
+
+  if (!char) {
+    outer: for (const wing of next.wings ?? []) {
+      if (wing.commander?.character.character_id === charId) {
+        char = wing.commander;
+        wing.commander = null;
+        break;
+      }
+      for (const squad of wing.squads ?? []) {
+        if (squad.commander?.character.character_id === charId) {
+          char = squad.commander;
+          squad.commander = null;
+          break outer;
+        }
+        const idx =
+          squad.characters?.findIndex((c) => c.character.character_id === charId) ?? -1;
+        if (idx !== -1) {
+          char = squad.characters![idx];
+          squad.characters!.splice(idx, 1);
+          break outer;
+        }
+      }
+    }
+  }
+
+  if (!char) return structure;
+
+  const parts = destination.split("-");
+  const role = parts[0];
+  const wingId = parts[1] !== undefined ? +parts[1] : null;
+  const squadId = parts[2] !== undefined ? +parts[2] : null;
+
+  if (role === "fleet_commander") {
+    next.commander = char;
+  } else if (role === "wing_commander" && wingId !== null) {
+    const wing = next.wings?.find((w) => w.wing_id === wingId);
+    if (wing) wing.commander = char;
+  } else if (role === "squad_commander" && wingId !== null && squadId !== null) {
+    const wing = next.wings?.find((w) => w.wing_id === wingId);
+    const squad = wing?.squads?.find((s) => s.squad_id === squadId);
+    if (squad) squad.commander = char;
+  } else if (role === "squad_member" && wingId !== null && squadId !== null) {
+    const wing = next.wings?.find((w) => w.wing_id === wingId);
+    const squad = wing?.squads?.find((s) => s.squad_id === squadId);
+    if (squad) {
+      if (!squad.characters) squad.characters = [];
+      squad.characters.push(char);
+    }
+  }
+
+  return next;
+}
 
 export function Fleet() {
-  const { fleetID } = useParams();
+  const fleetId = useFleetId();
   const [updatingCharacters, setUpdatingCharacters] = useState<Array<number>>([]);
-  const [keepUpdating, setkeepUpdating] = useState<boolean>(false);
+  const [keepUpdating, setKeepUpdating] = useState<boolean>(false);
+  const [optimisticData, setOptimisticData] = useState<Structure | null>(null);
 
-  // const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["getFleetStructure", fleetID],
+    queryKey: ["getFleetStructure", fleetId],
     queryFn: async () => {
-      const data = await getFleetStructure(fleetID ? +fleetID : 0);
+      const result = await getFleetStructure(fleetId);
       setUpdatingCharacters([]);
-      return data;
+      setOptimisticData(null);
+      return result;
     },
-    refetchInterval: 5000,
+    refetchInterval: keepUpdating ? 5000 : false,
     enabled: keepUpdating,
   });
 
+  const displayData = optimisticData ?? data;
+
+  const addWingMutation = useMutation({
+    mutationFn: () => addWing(fleetId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["getFleetStructure", fleetId] });
+    },
+  });
+
   async function handleDragEnd(result: DropResult) {
-    console.log(fleetID, result);
-    if (result.destination && fleetID) {
-      await moveMember(+fleetID, +result.draggableId, result.destination.droppableId);
-      setUpdatingCharacters(updatingCharacters.concat(+result.draggableId));
-      // queryClient.invalidateQueries({
-      //   queryKey: ["getFleetStructure", fleetID],
-      // });
+    if (!result.destination) return;
+
+    const charId = +result.draggableId;
+    const destination = result.destination.droppableId;
+
+    setUpdatingCharacters((prev) => [...prev, charId]);
+    if (displayData) {
+      setOptimisticData(moveCharacterInStructure(displayData, charId, destination));
     }
+
+    await moveMember(fleetId, charId, destination);
+    queryClient.invalidateQueries({ queryKey: ["getFleetStructure", fleetId] });
   }
 
   return (
@@ -51,13 +134,12 @@ export function Fleet() {
         <div className="d-flex flex-row align-items-center">
           <h5 className="me-auto">Fleet Structure</h5>
 
-          <Form.Check // prettier-ignore
+          <Form.Label className="me-1 mb-0 text-muted small">Live</Form.Label>
+          <Form.Check
             type="switch"
-            id="custom-switch"
-            // label="Polling Update"
-            onChange={(e) => {
-              setkeepUpdating(e.target.checked);
-            }}
+            id="live-update-switch"
+            checked={keepUpdating}
+            onChange={(e) => setKeepUpdating(e.target.checked)}
           />
 
           {!keepUpdating && (
@@ -65,16 +147,14 @@ export function Fleet() {
               variant={""}
               size={"sm"}
               className="mx-1"
-              onClick={() => {
-                refetch();
-              }}
+              onClick={() => refetch()}
             >
               <i className="fa fa-refresh" aria-hidden="true"></i>
             </Button>
           )}
 
           <div>
-            {data?.editable && (
+            {displayData?.editable && (
               <EditFleetObjectCollapse variant={undefined} id={`edit-fleet`} icon={"fa-bars"}>
                 <div className="d-flex flex-row me-2">
                   <OverlayTrigger
@@ -83,13 +163,16 @@ export function Fleet() {
                   >
                     <Button
                       className="ms-2"
-                      variant={""}
+                      variant={addWingMutation.isError ? "danger" : ""}
                       size={"sm"}
-                      onClick={() => {
-                        addWing(fleetID ? +fleetID : 0);
-                      }}
+                      disabled={addWingMutation.isPending}
+                      onClick={() => addWingMutation.mutate()}
                     >
-                      <i className={`fas fa-plus`}></i>
+                      <i
+                        className={`fas ${
+                          addWingMutation.isPending ? "fa-spinner fa-spin" : "fa-plus"
+                        }`}
+                      ></i>
                     </Button>
                   </OverlayTrigger>
                 </div>
@@ -109,16 +192,18 @@ export function Fleet() {
             />
           </div>
           <>
-            {data && (
-              <div className="d-flex flex-column" key={`fleet`}>
+            {displayData && (
+              <div className="d-flex flex-column">
                 <FleetDroppable id={"fleet_commander"}>
-                  {data.commander ? (
+                  {displayData.commander ? (
                     <FleetMember
-                      character={data.commander}
-                      updating={updatingCharacters.includes(data.commander?.character.character_id)}
+                      character={displayData.commander}
+                      updating={updatingCharacters.includes(
+                        displayData.commander?.character.character_id
+                      )}
                       icon="fa-star"
                       index={0}
-                      editable={data.editable}
+                      editable={displayData.editable}
                     />
                   ) : (
                     <span>
@@ -127,17 +212,14 @@ export function Fleet() {
                   )}
                 </FleetDroppable>
                 <div className="ms-4">
-                  {data.wings?.map((wing: components["schemas"]["FleetWing"]) => {
-                    return (
-                      <>
-                        <FleetWing
-                          wing={wing}
-                          updating={updatingCharacters}
-                          editable={data.editable}
-                        />
-                      </>
-                    );
-                  })}
+                  {displayData.wings?.map((wing: components["schemas"]["FleetWing"]) => (
+                    <FleetWing
+                      key={wing.wing_id}
+                      wing={wing}
+                      updating={updatingCharacters}
+                      editable={displayData.editable}
+                    />
+                  ))}
                 </div>
               </div>
             )}

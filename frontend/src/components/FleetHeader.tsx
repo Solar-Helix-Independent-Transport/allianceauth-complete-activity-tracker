@@ -1,24 +1,39 @@
 import { getActiveFleetDetails, postInviteMember, postRenameFleet } from "../api/Methods";
+import { useFleetId } from "../hooks/useFleetId";
 import CharacterSeachSelect from "./CharacterSeachSelect";
 import { EditFleetObjectCollapse } from "./structure/utils/EditFleetObjectCollapse";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import Card from "react-bootstrap/Card";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
 import Button from "react-bootstrap/esm/Button";
 import Form from "react-bootstrap/esm/Form";
-import { useParams } from "react-router-dom";
 
 const FleetHeader = () => {
-  const { fleetID } = useParams();
+  const fleetId = useFleetId();
+  const queryClient = useQueryClient();
   const [character, setCharacter] = useState(0);
   const [fleetName, setFleetName] = useState("");
 
   const { data } = useQuery({
-    queryKey: ["getActiveFleetDetails"],
-    queryFn: async () => await getActiveFleetDetails(fleetID ? +fleetID : 0),
-    refetchInterval: 6000,
+    queryKey: ["getActiveFleetDetails", fleetId],
+    queryFn: async () => await getActiveFleetDetails(fleetId),
+    refetchInterval: 5000,
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: () => postRenameFleet(fleetId, fleetName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["getActiveFleetDetails", fleetId] });
+    },
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: () => postInviteMember(fleetId, character),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["getFleetStructure", fleetId] });
+    },
   });
 
   return (
@@ -33,20 +48,24 @@ const FleetHeader = () => {
                   <Form.Control
                     size="sm"
                     type="text"
-                    onChange={(e) => {
-                      setFleetName(e.target.value);
-                    }}
+                    onChange={(e) => setFleetName(e.target.value)}
                     placeholder={"New Name"}
                     style={{ width: "250px" }}
                   />
                   <Button
                     className="me-2"
                     size={"sm"}
-                    onClick={() => {
-                      postRenameFleet(fleetID ? +fleetID : 0, fleetName);
-                    }}
+                    disabled={renameMutation.isPending}
+                    variant={renameMutation.isError ? "danger" : undefined}
+                    onClick={() => renameMutation.mutate()}
                   >
-                    <i className={"fas fa-fw fa-arrow-up-right-from-square"}></i>
+                    <i
+                      className={`fas fa-fw ${
+                        renameMutation.isPending
+                          ? "fa-spinner fa-spin"
+                          : "fa-arrow-up-right-from-square"
+                      }`}
+                    ></i>
                   </Button>
 
                   <div className="m-0" style={{ width: "300px" }}>
@@ -58,13 +77,16 @@ const FleetHeader = () => {
                   >
                     <Button
                       className="me-2"
-                      variant={"primary"}
+                      variant={inviteMutation.isError ? "danger" : "primary"}
                       size={"sm"}
-                      onClick={() => {
-                        postInviteMember(fleetID ? +fleetID : 0, character);
-                      }}
+                      disabled={inviteMutation.isPending}
+                      onClick={() => inviteMutation.mutate()}
                     >
-                      <i className={`fas fa-fw fa-plus`}></i>
+                      <i
+                        className={`fas fa-fw ${
+                          inviteMutation.isPending ? "fa-spinner fa-spin" : "fa-plus"
+                        }`}
+                      ></i>
                     </Button>
                   </OverlayTrigger>
                 </div>
@@ -82,7 +104,7 @@ const FleetHeader = () => {
               </OverlayTrigger>
               <OverlayTrigger
                 placement={"left"}
-                overlay={<Tooltip id={`tooltip-fleet-edit`}>Free Move Active?</Tooltip>}
+                overlay={<Tooltip id={`tooltip-fleet-free-move`}>Free Move Active?</Tooltip>}
               >
                 <i
                   className={`mx-2 fas fa-fw fa-arrows-up-down-left-right ${

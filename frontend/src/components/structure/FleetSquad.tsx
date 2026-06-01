@@ -1,14 +1,15 @@
 import { components } from "../../api/CatApi";
 import { delSquad, renameSquad } from "../../api/Methods";
+import { useFleetId } from "../../hooks/useFleetId";
 import { FleetMember } from "./FleetMember";
 import { EditFleetObjectCollapse } from "./utils/EditFleetObjectCollapse";
 import { FleetDroppable } from "./utils/FleetDroppable";
-import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import OverlayTrigger from "react-bootstrap/esm/OverlayTrigger";
 import Tooltip from "react-bootstrap/esm/Tooltip";
-import { useParams } from "react-router-dom";
 
 export declare interface SquadProps {
   wing_id: number;
@@ -19,13 +20,30 @@ export declare interface SquadProps {
 
 export function FleetSquad({ squad, wing_id, updating, editable }: SquadProps) {
   const id = `${wing_id}-${squad.squad_id}`;
-  const [newName, setName] = useState<string>(squad.name ? squad.name : "Unknown");
-  const { fleetID } = useParams();
+  const fleetId = useFleetId();
+  const queryClient = useQueryClient();
+  const [newName, setName] = useState<string>(squad.name ?? "Unknown");
+
+  useEffect(() => {
+    setName(squad.name ?? "Unknown");
+  }, [squad.name]);
 
   let memberCount = squad.characters ? squad.characters.length : 0;
-  if (squad.commander) {
-    memberCount = memberCount + 1;
-  }
+  if (squad.commander) memberCount += 1;
+
+  const invalidateStructure = () =>
+    queryClient.invalidateQueries({ queryKey: ["getFleetStructure", fleetId] });
+
+  const renameMutation = useMutation({
+    mutationFn: () => renameSquad(fleetId, squad.squad_id, newName),
+    onSuccess: invalidateStructure,
+  });
+
+  const delSquadMutation = useMutation({
+    mutationFn: () => delSquad(fleetId, squad.squad_id),
+    onSuccess: invalidateStructure,
+  });
+
   return (
     <div className="d-flex flex-column my-2" key={id}>
       <div className="d-flex flex-row align-items-center border-bottom" key={id}>
@@ -40,36 +58,49 @@ export function FleetSquad({ squad, wing_id, updating, editable }: SquadProps) {
                 <Form.Control
                   size="sm"
                   type="text"
+                  value={newName}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={"New Name"}
                 />
                 <Button
-                  variant={newName == squad.name ? "success" : "warning"}
+                  variant={
+                    renameMutation.isError
+                      ? "danger"
+                      : newName === squad.name
+                      ? "success"
+                      : "warning"
+                  }
                   size={"sm"}
-                  onClick={() => {
-                    renameSquad(fleetID ? +fleetID : 0, squad.squad_id, newName);
-                  }}
+                  disabled={renameMutation.isPending}
+                  onClick={() => renameMutation.mutate()}
                 >
                   <i
                     className={`fas ${
-                      newName == squad.name ? "fa-check" : "fa-arrow-up-right-from-square"
+                      renameMutation.isPending
+                        ? "fa-spinner fa-spin"
+                        : newName === squad.name
+                        ? "fa-check"
+                        : "fa-arrow-up-right-from-square"
                     }`}
                   ></i>
                 </Button>
                 {!memberCount && (
                   <OverlayTrigger
                     placement={"left"}
-                    overlay={<Tooltip id={`tooltip-warp-${id}`}>Delete Squad</Tooltip>}
+                    overlay={<Tooltip id={`tooltip-del-squad-${id}`}>Delete Squad</Tooltip>}
                   >
                     <Button
                       className="ms-2"
-                      variant={"danger"}
+                      variant={delSquadMutation.isError ? "danger" : "outline-danger"}
                       size={"sm"}
-                      onClick={() => {
-                        delSquad(fleetID ? +fleetID : 0, squad.squad_id);
-                      }}
+                      disabled={delSquadMutation.isPending}
+                      onClick={() => delSquadMutation.mutate()}
                     >
-                      <i className={`fas fa-trash`}></i>
+                      <i
+                        className={`fas ${
+                          delSquadMutation.isPending ? "fa-spinner fa-spin" : "fa-trash"
+                        }`}
+                      ></i>
                     </Button>
                   </OverlayTrigger>
                 )}
@@ -97,16 +128,15 @@ export function FleetSquad({ squad, wing_id, updating, editable }: SquadProps) {
         <FleetDroppable id={`squad_member-${id}`}>
           {squad.characters?.length ? (
             squad.characters.map(
-              (char: components["schemas"]["SnapshotCharacter"], index: number) => {
-                return (
-                  <FleetMember
-                    character={char}
-                    index={index}
-                    updating={updating?.includes(char.character.character_id)}
-                    editable={editable}
-                  />
-                );
-              }
+              (char: components["schemas"]["SnapshotCharacter"], index: number) => (
+                <FleetMember
+                  key={char.character.character_id}
+                  character={char}
+                  index={index}
+                  updating={updating?.includes(char.character.character_id)}
+                  editable={editable}
+                />
+              )
             )
           ) : (
             <span className="">

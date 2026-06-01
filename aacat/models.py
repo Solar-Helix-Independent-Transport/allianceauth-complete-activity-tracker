@@ -8,6 +8,7 @@ from solo.models import SingletonModel
 logger = logging.getLogger(__name__)
 
 
+
 class CATConfiguration(SingletonModel):
     monitor_groups = models.ManyToManyField(Group, blank=True)
     enable_monitoring_mode = models.BooleanField(default=False)
@@ -57,8 +58,8 @@ class Fleet(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField(blank=True, null=True)
 
-    events = models.IntegerField(default=0)
     refresh_time = models.IntegerField(default=10)
+    snapshots = models.JSONField(default=list)
     fleet_type = models.ForeignKey(
         FleetType, on_delete=models.SET_NULL, default=None, null=True, blank=True)
 
@@ -73,79 +74,10 @@ class Fleet(models.Model):
         default_permissions = ()
 
 
-class ShipCategory(models.Model):
-    """
-    basic ship Cats
-    """
-    id = models.BigIntegerField(primary_key=True)
-    name = models.CharField(max_length=150)
-
-    class Meta:
-        default_permissions = ()
-
-
-class ShipType(models.Model):
-    """
-    basic ship types
-    """
-    id = models.BigIntegerField(primary_key=True)
-    name = models.CharField(max_length=150)
-    cat = models.ForeignKey(ShipCategory, null=True, on_delete=models.SET_NULL)
-
-    class Meta:
-        default_permissions = ()
-
-
-class Region(models.Model):
-    """
-    basic Region
-    """
-    id = models.BigIntegerField(primary_key=True)
-    name = models.CharField(max_length=150)
-
-    class Meta:
-        default_permissions = ()
-
-
-class Constellation(models.Model):
-    """
-    basic Constellation
-    """
-    id = models.BigIntegerField(primary_key=True)
-    name = models.CharField(max_length=150)
-    region = models.ForeignKey(Region, null=True, on_delete=models.SET_NULL)
-
-    class Meta:
-        default_permissions = ()
-
-
-class System(models.Model):
-    """
-    basic Solar System
-    """
-    id = models.BigIntegerField(primary_key=True)
-    name = models.CharField(max_length=150)
-    constellation = models.ForeignKey(
-        Constellation, null=True, on_delete=models.SET_NULL)
-    region = models.ForeignKey(Region, null=True, on_delete=models.SET_NULL)
-
-    class Meta:
-        default_permissions = ()
-
-
 class FleetEvent(models.Model):
     """
-        Records a snapshot in time of every person on fleet.
-        under normal circumstances this would be every 10s
-        can be used to aggregate rough time spent in a hull type
+    Legacy per-row snapshot records. Migrated to Fleet.snapshots by 0007_use_eve_sde.
     """
-    """
-        TODO
-        In UI: group these to main if available, and then show a list of ships they were in and a list of toons to minimize the list a bit
-        In Statistics: time in ship amalgamated across a main. note that each fleet could be updated at different rates.
-
-    """
-
     time = models.DateTimeField()
     fleet = models.ForeignKey(Fleet, on_delete=models.CASCADE)
 
@@ -164,9 +96,6 @@ class FleetEvent(models.Model):
     takes_fleet_warp = models.BooleanField(default=False)
     distance_from_fc = models.IntegerField(default=-2)
 
-    solar_system = models.ForeignKey(
-        System, null=True, on_delete=models.SET_NULL)
-    ship = models.ForeignKey(ShipType, on_delete=models.CASCADE)
-
     class Meta:
         default_permissions = ()
+

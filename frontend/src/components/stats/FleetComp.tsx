@@ -1,51 +1,43 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { getCatApi } from "../../api/Api";
+import { getFleetComp, ShipCount } from "../../api/Methods";
+import { useFleetId } from "../../hooks/useFleetId";
 import { useQuery } from "@tanstack/react-query";
 import Card from "react-bootstrap/Card";
-import { useParams } from "react-router-dom";
-
-const getFleetComp = async (fleetID: number) => {
-  // console.log("getFleetComp");
-  const { GET } = getCatApi();
-
-  const { data, error } = await GET("/cat/api/fleets/{fleet_id}/stats", {
-    params: {
-      path: { fleet_id: fleetID },
-    },
-  });
-  if (data) {
-    return data;
-  } else {
-    console.log(error);
-    return [];
-  }
-};
+import Spinner from "react-bootstrap/Spinner";
 
 const FleetComp = () => {
-  const { fleetID } = useParams();
+  const fleetId = useFleetId();
 
-  const { data } = useQuery({
-    queryKey: ["getFleetComp", fleetID],
-    queryFn: async () => await getFleetComp(fleetID ? +fleetID : 0),
+  const { data, isPending } = useQuery({
+    queryKey: ["getFleetComp", fleetId],
+    queryFn: async () => await getFleetComp(fleetId),
     refetchInterval: 5000,
   });
 
-  console.log(data);
+  if (isPending) {
+    return (
+      <Card className="m-1 flex-fill">
+        <Card.Body>
+          <Card.Title>Fleet Composition</Card.Title>
+          <hr />
+          <Spinner animation="border" />
+        </Card.Body>
+      </Card>
+    );
+  }
+
   return (
     <Card className="m-1 flex-fill">
       <Card.Body>
         <Card.Title>Fleet Composition</Card.Title>
         <hr />
-        {data?.map((ship: any) => {
-          return (
-            <Card.Text>
-              <div className="d-flex flex-row justify-content-between">
-                <span>{ship.name}</span>
-                <span>{ship.count}</span>
-              </div>
-            </Card.Text>
-          );
-        })}
+        {data?.map((ship: ShipCount) => (
+          <Card.Text key={ship.name}>
+            <div className="d-flex flex-row justify-content-between">
+              <span>{ship.name}</span>
+              <span>{ship.count}</span>
+            </div>
+          </Card.Text>
+        ))}
       </Card.Body>
     </Card>
   );

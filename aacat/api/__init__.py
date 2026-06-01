@@ -4,18 +4,18 @@ from datetime import timedelta
 from typing import List
 
 from allianceauth.eveonline.models import EveCharacter
-from django.conf import settings
 from django.contrib.auth.models import Group, User
-from django.db.models import (CharField, Count, ExpressionWrapper, F,
-                              IntegerField, Max, Min, TextChoices, Value)
+from django.db.models import TextChoices
 from django.utils import timezone
 from esi.models import Token
-from ninja import Field, NinjaAPI
+from eve_sde.models import ItemType, SolarSystem as SDESolarSystem
+from ninja import NinjaAPI
 from ninja.security import django_auth
 
 from aacat.tasks.fleet_tasks import check_character_online, snapshot_fleet
 
 from .. import models, providers, schema
+from .fleet import _build_char_data, _latest_snapshot
 from .fat import FatEndpoints
 from .fleet import FleetStatsEndpoints
 from .search import SearchEndpoints
@@ -160,35 +160,11 @@ def get_fleet_recent_snapshot(request, fleet_id: int):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
-    max_date = models.FleetEvent.objects.filter(
-        fleet=fleet).aggregate(max_date=Max("time"))["max_date"]
-    latest_events = models.FleetEvent.objects.filter(
-        fleet=fleet, time=max_date).order_by("distance_from_fc", "ship__name")
-    snapshot = []
-    for e in latest_events:
-        main_char = None
-        try:
-            main_char = e.character_name.character_ownership.user.profile.main_character
-        except:
-            pass
-
-        snapshot.append({
-            "character": e.character_name,
-            "main": main_char,
-            "distance": e.distance_from_fc,
-            "system": {
-                "id": e.solar_system.id,
-                "name": e.solar_system.name,
-                "cat": "SolarSystem"
-            },
-            "ship": {
-                "id": e.ship.id,
-                "name": e.ship.name,
-            },
-            "role": e.role,
-            "join_time": e.join_time
-        })
-    return {"time": max_date, "snapshot": snapshot}
+    latest = _latest_snapshot(fleet)
+    if not latest:
+        return 404, "No snapshots"
+    chars = _build_char_data(latest["members"])
+    return {"time": latest["time"], "snapshot": list(chars.values())}
 
 
 @api.get(
@@ -204,50 +180,43 @@ def get_fleet_time_diff_mains(request, fleet_id: int, minutes: int):
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
-    max_date = models.FleetEvent.objects.filter(
-        fleet=fleet).aggregate(max_date=Max("time"))["max_date"]
-    latest_events = models.FleetEvent.objects.filter(
-        fleet=fleet, time=max_date)
+    snapshots = fleet.snapshots
+    if not snapshots:
+        return {"new_joiners": [], "deserters": []}
 
-    time_start = timezone.now() - timedelta(minutes=minutes)
-    min_date = models.FleetEvent.objects.filter(
-        fleet=fleet, time__gte=time_start).aggregate(min_date=Min("time"))["min_date"]
-    oldest_events = models.FleetEvent.objects.filter(
-        fleet=fleet, time=min_date)
+    latest = _latest_snapshot(fleet)
+    time_start_str = (timezone.now() - timedelta(minutes=minutes)).isoformat()
+    recent = [s for s in snapshots if s["time"] >= time_start_str]
+    oldest = min(recent, key=lambda s: s["time"]) if recent else snapshots[0]
 
-    start = []
-    output = {
-        "new_joiners": [],
-        "deserters": []
-    }
-    # output = defaultdict( lambda: {
-    #     "count":0,
-    #     "name": "",
-    #     "type_id": 0
-    # })
-    start_chars = oldest_events.values(
-        name=F(
-            "character_name__character_ownership__user__profile__main_character__character_name")
-    ).distinct()
+    def main_names_from_snapshot(snap):
+        char_name_ids = [m["character_name_id"] for m in snap["members"] if m.get("character_name_id")]
+        chars = {
+            c.pk: c for c in EveCharacter.objects.filter(pk__in=char_name_ids).select_related(
+                "character_ownership__user__profile__main_character"
+            )
+        }
+        names = []
+        for cid in char_name_ids:
+            char = chars.get(cid)
+            if not char:
+                continue
+            try:
+                names.append(char.character_ownership.user.profile.main_character.character_name)
+            except Exception:
+                pass
+        return names
 
-    for ev in start_chars:
-        start.append(
-            ev['name']
-        )
+    start = main_names_from_snapshot(oldest)
+    output = {"new_joiners": [], "deserters": []}
 
-    end_chars = latest_events.values(
-        name=F(
-            "character_name__character_ownership__user__profile__main_character__character_name")
-    ).distinct()
-
-    for ev in end_chars:
-        c = ev['name']
-        if c in start:
-            start.pop(start.index(c))
+    for name in main_names_from_snapshot(latest):
+        if name in start:
+            start.remove(name)
         else:
-            output['new_joiners'].append(ev['name'])
+            output["new_joiners"].append(name)
 
-    output['deserters'] = start
+    output["deserters"] = start
     return output
 
 
@@ -268,126 +237,96 @@ def get_fleet_character_changes(
         return 403, "No Perms"
 
     fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
-
-    max_date = models.FleetEvent.objects.filter(
-        fleet=fleet).aggregate(max_date=Max("time"))["max_date"]
-
-    latest_events = models.FleetEvent.objects.filter(
-        fleet=fleet, time=max_date)
-
-    current = []
-
-    current_chars = latest_events.values(
-        name=F(
-            "character_name__character_ownership__user__profile__main_character__character_name")
-    ).distinct()
-
-    for ev in current_chars:
-        current.append(
-            ev['name']
-        )
-
-    total_events = models.FleetEvent.objects.filter(
-        fleet=fleet
-    ).values(
-        "time"
-    ).aggregate(
-        total=Count("time", distinct=True)
-    )['total']
-
-    char_events = models.FleetEvent.objects.filter(
-        fleet=fleet
-    ).values(
-        main_character_name=F(
-            "character_name__character_ownership__user__profile__main_character__character_name")
-    ).annotate(
-        count=Count("time", distinct=True),
-        main_character_id=F(
-            "character_name__character_ownership__user__profile__main_character__character_id"),
-        main_corporation_name=F(
-            "character_name__character_ownership__user__profile__main_character__corporation_name"),
-        main_corporation_id=F(
-            "character_name__character_ownership__user__profile__main_character__corporation_id"),
-        main_alliance_name=F(
-            "character_name__character_ownership__user__profile__main_character__alliance_name"),
-        main_alliance_id=F(
-            "character_name__character_ownership__user__profile__main_character__alliance_id"),
-    )
-
-    unaffiliated = models.FleetEvent.objects.filter(
-        fleet=fleet, character_name__character_ownership__isnull=True
-    ).values(
-        _character_name=F(
-            "character_name__character_name")
-    ).annotate(
-        count=Count("time", distinct=True),
-        _character_id=F(
-            "character_name__character_id"),
-        _corporation_name=F(
-            "character_name__corporation_name"),
-        _corporation_id=F(
-            "character_name__corporation_id"),
-        _alliance_name=F(
-            "character_name__alliance_name"),
-        _alliance_id=F(
-            "character_name__alliance_id"),
-    )
+    snapshots = fleet.snapshots
+    total_events = len(snapshots)
 
     output = {
-        "current": {
-            "name": "Current",
-            "total": total_events,
-            "characters": []
-        },
-        "joiners": {
-            "name": "Joiners",
-            "total": total_events,
-            "characters": []
-        },
-        "leavers": {
-            "name": "Leavers",
-            "total": total_events,
-            "characters": []
-        },
-        "unaffiliated": {
-            "name": "Unaffiliated",
-            "total": total_events,
-            "characters": [{
-                "character": {
-                    "character_name": c.get("_character_name"),
-                    "character_id": c.get("_character_id"),
-                    "corporation_name": c.get("_corporation_name"),
-                    "corporation_id": c.get("_corporation_id"),
-                    "alliance_name": c.get("_alliance_name", None),
-                    "alliance_id": c.get("_alliance_id", None),
-                },
-                "count": c.get("count", 0)
-            } for c in unaffiliated]
-        },
+        "current": {"name": "Current", "total": total_events, "characters": []},
+        "joiners": {"name": "Joiners", "total": total_events, "characters": []},
+        "leavers": {"name": "Leavers", "total": total_events, "characters": []},
+        "unaffiliated": {"name": "Unaffiliated", "total": total_events, "characters": []},
     }
+
+    if not snapshots:
+        return list(output.values())
+
+    # Count appearances per character_name_id across all snapshots
+    char_counts = defaultdict(int)
+    for snap in snapshots:
+        for m in snap["members"]:
+            if m.get("character_name_id"):
+                char_counts[m["character_name_id"]] += 1
+
+    all_chars = {
+        c.pk: c for c in EveCharacter.objects.filter(pk__in=char_counts.keys()).select_related(
+            "character_ownership__user__profile__main_character"
+        )
+    }
+
+    # Main character IDs present in the latest snapshot
+    latest = _latest_snapshot(fleet)
+    latest_main_ids = set()
+    for m in latest["members"]:
+        char = all_chars.get(m.get("character_name_id"))
+        if char:
+            try:
+                latest_main_ids.add(char.character_ownership.user.profile.main_character.character_id)
+            except Exception:
+                pass
 
     cutoff = total_events * ratio_cutoff
 
-    for c in char_events:
-        if c.get("main_character_id"):
-            character_event = {
-                "character": {
-                    "character_name": c.get("main_character_name"),
-                    "character_id": c.get("main_character_id"),
-                    "corporation_name": c.get("main_corporation_name"),
-                    "corporation_id": c.get("main_corporation_id"),
-                    "alliance_name": c.get("main_alliance_name", None),
-                    "alliance_id": c.get("main_alliance_id", None),
-                },
-                "count": c.get("count", 0)
-            }
-            if c['main_character_name'] in current:
-                if c['count'] > cutoff:
-                    output['current']["characters"].append(character_event)
-                else:
-                    output['joiners']["characters"].append(character_event)
+    # Aggregate by main character (highest count per main wins)
+    main_data = {}
+    unaffiliated_data = {}
+
+    for char_name_id, count in char_counts.items():
+        char = all_chars.get(char_name_id)
+        if not char:
+            continue
+        try:
+            main = char.character_ownership.user.profile.main_character
+            key = main.character_id
+            if key not in main_data or main_data[key]["count"] < count:
+                main_data[key] = {
+                    "character": {
+                        "character_name": main.character_name,
+                        "character_id": main.character_id,
+                        "corporation_name": main.corporation_name,
+                        "corporation_id": main.corporation_id,
+                        "alliance_name": main.alliance_name,
+                        "alliance_id": main.alliance_id,
+                    },
+                    "count": count,
+                }
+        except Exception:
+            key = char.character_id
+            if key not in unaffiliated_data or unaffiliated_data[key]["count"] < count:
+                unaffiliated_data[key] = {
+                    "character": {
+                        "character_name": char.character_name,
+                        "character_id": char.character_id,
+                        "corporation_name": char.corporation_name,
+                        "corporation_id": char.corporation_id,
+                        "alliance_name": char.alliance_name,
+                        "alliance_id": char.alliance_id,
+                    },
+                    "count": count,
+                }
+
+    output["unaffiliated"]["characters"] = [
+        {"character": d["character"], "count": d["count"]} for d in unaffiliated_data.values()
+    ]
+
+    for main_id, data in main_data.items():
+        entry = {"character": data["character"], "count": data["count"]}
+        if main_id in latest_main_ids:
+            if data["count"] > cutoff:
+                output["current"]["characters"].append(entry)
             else:
-                output['leavers']["characters"].append(character_event)
+                output["joiners"]["characters"].append(entry)
+        else:
+            output["leavers"]["characters"].append(entry)
 
     return list(output.values())
 
@@ -444,7 +383,7 @@ def get_fleet_details(request, fleet_id: int):
     details = providers.esi.client.Fleets.GetFleetsFleetId(
         fleet_id=fleet_id,
         token=token_read
-    ).result()
+    ).result(use_etag=False)
     _f = {
         "name": fleet.name,
         "boss": fleet.boss,
@@ -552,7 +491,7 @@ def invite_fleet_member(request, fleet_id: int, character_id: int):
                             'esi-fleets.write_fleet.v1'])
     join = providers.esi.client.Fleets.PostFleetsFleetIdMembers(
         fleet_id=fleet_id,
-        invitation={
+        body={
             "character_id": character_id,
             "role": "squad_member"
         },

@@ -1,24 +1,67 @@
 import logging
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import timedelta
 from typing import List
 
 from aacat import providers
 from allianceauth.eveonline.models import EveCharacter
-from django.conf import settings
-from django.contrib.auth.models import Group, User
-from django.db.models import (CharField, Count, ExpressionWrapper, F,
-                              IntegerField, Max, Min, TextChoices, Value)
 from django.utils import timezone
 from esi.models import Token
-from ninja import Field, NinjaAPI
-from ninja.security import django_auth
-
-from aacat.tasks.fleet_tasks import check_character_online, snapshot_fleet
+from eve_sde.models import ItemType, SolarSystem as SDESolarSystem
 
 from .. import models, schema
 
 logger = logging.getLogger(__name__)
+
+
+def _latest_snapshot(fleet):
+    if not fleet.snapshots:
+        return None
+    return max(fleet.snapshots, key=lambda s: s["time"])
+
+
+def _build_char_data(members):
+    """Bulk-load EveCharacters and eve_sde lookups for a list of member dicts."""
+    char_name_ids = [m["character_name_id"] for m in members if m.get("character_name_id")]
+    ship_type_ids = {m["ship_type_id"] for m in members if m.get("ship_type_id")}
+    solar_system_ids = {m["solar_system_id"] for m in members if m.get("solar_system_id")}
+
+    eve_chars = {
+        c.pk: c for c in EveCharacter.objects.filter(pk__in=char_name_ids).select_related(
+            "character_ownership__user__profile__main_character"
+        )
+    }
+    ships = {t.id: t for t in ItemType.objects.filter(id__in=ship_type_ids)}
+    systems = {s.id: s for s in SDESolarSystem.objects.filter(id__in=solar_system_ids)}
+
+    result = {}
+    for m in sorted(members, key=lambda x: x.get("distance_from_fc", 999)):
+        char = eve_chars.get(m.get("character_name_id"))
+        main_char = None
+        try:
+            main_char = char.character_ownership.user.profile.main_character
+        except Exception:
+            pass
+        ship = ships.get(m.get("ship_type_id"))
+        system = systems.get(m.get("solar_system_id"))
+        result[m["character_id"]] = {
+            "character": char,
+            "main": main_char,
+            "distance": m.get("distance_from_fc", -2),
+            "system": {
+                "id": m.get("solar_system_id"),
+                "name": system.name if system else str(m.get("solar_system_id", "Unknown")),
+                "cat": "SolarSystem",
+            },
+            "ship": {
+                "id": m.get("ship_type_id"),
+                "name": ship.name if ship else f"Unknown ({m.get('ship_type_id')})",
+            },
+            "role": m.get("role"),
+            "join_time": m.get("join_time"),
+            "takes_fleet_warp": m.get("takes_fleet_warp", False),
+        }
+    return result
 
 
 class FleetStatsEndpoints():
@@ -30,25 +73,33 @@ class FleetStatsEndpoints():
         )
         def get_fleet_stats(request, fleet_id: int):
             """
-                Provide the most recent snapshot of a fleet grouped by ship types etc.
+                Provide the most recent snapshot of a fleet grouped by ship types.
             """
             if not request.user.has_perm('aacat.edit_fleets'):
                 return 403, "No Perms"
 
             fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
-            max_date = models.FleetEvent.objects.filter(
-                fleet=fleet).aggregate(max_date=Max("time"))["max_date"]
-            latest_events = models.FleetEvent.objects.filter(
-                fleet=fleet, time=max_date)
-            ship_counts = latest_events.values(
-                name=F("ship__name")
-            ).annotate(
-                count=Count("ship__name"),
-                type_id=F("ship_type_id"),
-                cat_name=F("ship__cat__name"),
-                cat_id=F("ship__cat__id")
-            ).order_by("-count")
-            return ship_counts
+            latest = _latest_snapshot(fleet)
+            if not latest:
+                return []
+
+            counts = Counter(m["ship_type_id"] for m in latest["members"])
+            type_info = {
+                t.id: t for t in ItemType.objects.filter(
+                    id__in=counts.keys()
+                ).select_related("group")
+            }
+            result = []
+            for type_id, count in counts.items():
+                t = type_info.get(type_id)
+                result.append({
+                    "name": t.name if t else f"Unknown ({type_id})",
+                    "count": count,
+                    "type_id": type_id,
+                    "cat_name": t.group.name if t and t.group else None,
+                    "cat_id": t.group.id if t and t.group else None,
+                })
+            return sorted(result, key=lambda x: -x["count"])
 
         @api.get(
             "/fleets/{fleet_id}/timeline",
@@ -63,52 +114,21 @@ class FleetStatsEndpoints():
                 return 403, "No Perms"
 
             fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+            if not fleet.snapshots:
+                return []
 
-            events = models.FleetEvent.objects.filter(fleet=fleet).values(
-                "time"
-            ).annotate(
-                count=Count("ship__name"),
-                type_id=F("ship_type_id"),
-                cat_name=F("ship__cat__name"),
-                ship_name=F("ship__name"),
-                cat_id=F("ship__cat__id")
-            ).order_by("ship__name")
+            all_type_ids = {m["ship_type_id"] for s in fleet.snapshots for m in s["members"]}
+            type_info = {t.id: t for t in ItemType.objects.filter(id__in=all_type_ids)}
 
-            """
-            [
-                {
-                    "label":"ship_name",
-                    "data":[
-                        {
-                            "primary": date,
-                            "secondary": count
-                        },
-                        {
-                            "primary": date,
-                            "secondary": count
-                        },
-                        ...
-                    ]
-                },
-                {
-                    "label":"string",
-                    "data":[
-                        {
-                            "primary": date,
-                            "secondary": count
-                        },
-                        ...
-                    ]
-                },
-                ...
-            ]
-            """
+            timeline = defaultdict(list)
+            for snap in fleet.snapshots:
+                counts = Counter(m["ship_type_id"] for m in snap["members"])
+                for type_id, count in counts.items():
+                    t = type_info.get(type_id)
+                    name = t.name if t else f"Unknown ({type_id})"
+                    timeline[name].append({"primary": snap["time"], "secondary": count})
 
-            out = {}
-            for event in events:
-                print(event)
-
-            return list(out.values())
+            return [{"label": name, "data": data} for name, data in timeline.items()]
 
         @api.get(
             "/fleets/{fleet_id}/time_diff/{minutes}",
@@ -117,67 +137,39 @@ class FleetStatsEndpoints():
         )
         def get_fleet_time_diff(request, fleet_id: int, minutes: int):
             """
-                Provide the rolling changes of a fleets comp in the time period
+                Provide the rolling changes of a fleet's comp in the time period.
             """
             if not request.user.has_perm('aacat.edit_fleets'):
                 return 403, "No Perms"
 
             fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
-            max_date = models.FleetEvent.objects.filter(
-                fleet=fleet).aggregate(max_date=Max("time"))["max_date"]
-            latest_events = models.FleetEvent.objects.filter(
-                fleet=fleet, time=max_date)
+            if not fleet.snapshots:
+                return []
 
-            time_start = timezone.now() - timedelta(minutes=minutes)
-            min_date = models.FleetEvent.objects.filter(
-                fleet=fleet, time__gte=time_start).aggregate(min_date=Min("time"))["min_date"]
-            oldest_events = models.FleetEvent.objects.filter(
-                fleet=fleet, time=min_date)
+            latest = _latest_snapshot(fleet)
+            time_start_str = (timezone.now() - timedelta(minutes=minutes)).isoformat()
+            recent = [s for s in fleet.snapshots if s["time"] >= time_start_str]
+            oldest = min(recent, key=lambda s: s["time"]) if recent else fleet.snapshots[0]
+
+            start_counts = Counter(m["ship_type_id"] for m in oldest["members"])
+            end_counts = Counter(m["ship_type_id"] for m in latest["members"])
+            all_type_ids = set(start_counts) | set(end_counts)
+            type_info = {t.id: t for t in ItemType.objects.filter(id__in=all_type_ids)}
 
             output = {}
-            # output = defaultdict( lambda: {
-            #     "count":0,
-            #     "name": "",
-            #     "type_id": 0
-            # })
-
-            start_counts = oldest_events.values(
-                name=F("ship__name")
-            ).annotate(
-                count=Count("ship__name"),
-                type_id=F("ship_type_id")
-            )
-
-            for ev in start_counts:
-                output[ev['name']] = {
-                    "name": ev['name'],
-                    "start_count": ev['count'],
-                    "end_count": 0,
-                    "diff": -ev['count'],
-                    "type_id": ev['type_id']
+            for type_id in all_type_ids:
+                t = type_info.get(type_id)
+                name = t.name if t else f"Unknown ({type_id})"
+                start_c = start_counts.get(type_id, 0)
+                end_c = end_counts.get(type_id, 0)
+                output[name] = {
+                    "name": name,
+                    "start_count": start_c,
+                    "end_count": end_c,
+                    "diff": end_c - start_c,
+                    "type_id": type_id,
                 }
-
-            end_counts = latest_events.values(
-                name=F("ship__name")
-            ).annotate(
-                count=Count("ship__name"),
-                type_id=F("ship_type_id")
-            )
-
-            for ev in end_counts:
-                if ev['name'] not in output:
-                    output[ev['name']] = {
-                        "name": ev['name'],
-                        "start_count": 0,
-                        "type_id": ev['type_id']
-                    }
-                output[ev['name']].update({
-                    "end_count": ev['count'],
-                    "diff": ev['count'] - output[ev['name']]["start_count"]
-                })
-
             return list(output.values())
-
 
         @api.get(
             "/fleets/{fleet_id}/structure",
@@ -186,116 +178,72 @@ class FleetStatsEndpoints():
         )
         def get_fleet_structure(request, fleet_id: int):
             """
-                Get the fleet hierarchy
-                TODO Refactor this is way too big
-                TODO can prob share logic with the snapshot task
+                Get the fleet hierarchy.
             """
             if not request.user.has_perm('aacat.edit_fleets'):
                 return 403, "No Perms"
 
             fleet = models.Fleet.objects.filter(eve_fleet_id=fleet_id).last()
-            token = Token.get_token(fleet.boss.character_id, [
-                                    'esi-fleets.read_fleet.v1'])
+            token = Token.get_token(fleet.boss.character_id, ["esi-fleets.read_fleet.v1"])
 
             fleet_wing_data = providers.esi.get_fleet_wings(fleet_id, token)
-
             fleet_member_data = providers.esi.client.Fleets.GetFleetsFleetIdMembers(
-                fleet_id=fleet_id,
-                token=token
-            ).result()
+                fleet_id=fleet_id, token=token
+            ).result(use_etag=False)
 
             fleet_structure = {
                 "fleet_boss": fleet.boss,
                 "commander": None,
-                "wings": {}
+                "wings": {},
             }
-
             for wing in fleet_wing_data:
                 w = wing.id
-
                 if w not in fleet_structure["wings"]:
                     fleet_structure["wings"][w] = {
                         "wing_id": w,
                         "name": wing.name,
                         "commander": None,
-                        "squads": {}
+                        "squads": {},
                     }
                 for squad in wing.squads:
                     s = squad.id
-
                     if s not in fleet_structure["wings"][w]["squads"]:
                         fleet_structure["wings"][w]["squads"][s] = {
                             "squad_id": s,
                             "name": squad.name,
                             "commander": None,
-                            "characters": []
+                            "characters": [],
                         }
 
-            max_date = models.FleetEvent.objects.filter(
-                fleet=fleet).aggregate(max_date=Max("time"))["max_date"]
-            latest_events = models.FleetEvent.objects.filter(
-                fleet=fleet, time=max_date).select_related(
-                    "solar_system",
-                    "ship",
-                    "character_name",
-                    "character_name__character_ownership__user__profile__main_character"
-            ).order_by("distance_from_fc", "ship__name")
+            latest = _latest_snapshot(fleet)
+            if not latest:
+                return 404, "No snapshots"
 
-            chars = {}
-            for e in latest_events:
-                main_char = None
-                try:
-                    main_char = e.character_name.character_ownership.user.profile.main_character
-                except Exception:
-                    pass
-
-                chars[e.character_id] = {
-                    "character": e.character_name,
-                    "main": main_char,
-                    "distance": e.distance_from_fc,
-                    "system": {
-                        "id": e.solar_system.id,
-                        "name": e.solar_system.name,
-                        "cat": "SolarSystem"
-                    },
-                    "ship": {
-                        "id": e.ship.id,
-                        "name": e.ship.name,
-                    },
-                    "role": e.role,
-                    "join_time": e.join_time,
-                    "takes_fleet_warp": e.takes_fleet_warp
-                }
+            chars = _build_char_data(latest["members"])
 
             for e in fleet_member_data:
-                if e.character_id in chars:
-                    r = e.role
-                    w = e.wing_id
-                    s = e.squad_id
-                    if r == FleetRoles.SQUAD_MEMBER:
-                        fleet_structure["wings"][w]["squads"][s]["characters"].append(
-                            chars[e.character_id])
-                    elif r == FleetRoles.FLEET_COMMANDER:
-                        fleet_structure["commander"] = chars[e.character_id]
-                    elif r == FleetRoles.WING_COMMANDER:
-                        fleet_structure["wings"][w]["commander"] = chars[e.character_id]
-                    elif r == FleetRoles.SQUAD_COMMANDER:
-                        fleet_structure["wings"][w]["squads"][s]["commander"] = chars[
-                            e.character_id
-                        ]
-                else:
-                    logger.warning(f"No event for {e}")
+                if e.character_id not in chars:
+                    logger.warning(f"No snapshot entry for {e}")
+                    continue
+                r = e.role
+                w = e.wing_id
+                s = e.squad_id
+                char_entry = chars[e.character_id]
+                if r == "squad_member":
+                    fleet_structure["wings"][w]["squads"][s]["characters"].append(char_entry)
+                elif r == "fleet_commander":
+                    fleet_structure["commander"] = char_entry
+                elif r == "wing_commander":
+                    fleet_structure["wings"][w]["commander"] = char_entry
+                elif r == "squad_commander":
+                    fleet_structure["wings"][w]["squads"][s]["commander"] = char_entry
 
-            # DictToList
             for _, w in fleet_structure["wings"].items():
-                w["squads"] = sorted(list(w["squads"].values()),
-                                    key=lambda x: x['name'].lower())
-
+                w["squads"] = sorted(list(w["squads"].values()), key=lambda x: x["name"].lower())
             fleet_structure["wings"] = sorted(
-                list(fleet_structure["wings"].values()), key=lambda x: x['name'].lower())
+                list(fleet_structure["wings"].values()), key=lambda x: x["name"].lower()
+            )
 
-            token = Token.get_token(fleet.boss.character_id, [
-                                    'esi-fleets.write_fleet.v1'])
-            fleet_structure["editable"] = True if token else False
-
+            token_write = Token.get_token(fleet.boss.character_id, ["esi-fleets.write_fleet.v1"])
+            fleet_structure["editable"] = True if token_write else False
             return fleet_structure

@@ -1,21 +1,10 @@
 import datetime
 import logging
-from collections import defaultdict
-from datetime import timedelta
-from typing import List
 
 from allianceauth.eveonline.models import EveCharacter
-from django.conf import settings
-from django.contrib.auth.models import Group, User
-from django.db.models import (CharField, Count, ExpressionWrapper, F,
-                              IntegerField, Max, Min, TextChoices, Value)
 from django.utils import timezone
 from django.utils.crypto import get_random_string
-from esi.models import Token
-from ninja import Field, NinjaAPI
-from ninja.security import django_auth
-
-from aacat.tasks.fleet_tasks import check_character_online, snapshot_fleet
+from eve_sde.models import ItemType, SolarSystem as SDESolarSystem
 
 from .. import models, schema
 
@@ -36,21 +25,41 @@ class FatEndpoints():
             link_Type: int = None
         ):
             """
-                Create a fat from current snapshot of a fleet. this can happen in the future
+                Create a fat from current snapshot of a fleet.
             """
             if not request.user.has_perm('aacat.edit_fleets'):
                 return 403, "No Perms"
 
             fleet = models.Fleet.objects.get(eve_fleet_id=fleet_id)
+            if not fleet.snapshots:
+                return 401, "No snapshots available for this fleet."
 
             if not date_time:
                 date_time = timezone.now()
 
-            max_date = models.FleetEvent.objects.filter(
-                fleet=fleet, time__lte=date_time).aggregate(max_date=Max("time"))["max_date"]
-
-            if not max_date or max_date < date_time - datetime.timedelta(minutes=5):
+            # Find the latest snapshot at or before date_time
+            valid = [
+                s for s in fleet.snapshots
+                if datetime.datetime.fromisoformat(s["time"]) <= date_time
+            ]
+            if not valid:
                 return 401, "Invalid time try again! Must be within 5 minutes of a valid event during the fleet."
+
+            closest = max(valid, key=lambda s: s["time"])
+            snap_time = datetime.datetime.fromisoformat(closest["time"])
+            if snap_time < date_time - datetime.timedelta(minutes=5):
+                return 401, "Invalid time try again! Must be within 5 minutes of a valid event during the fleet."
+
+            members = closest["members"]
+
+            # Bulk look up names
+            char_name_ids = [m["character_name_id"] for m in members if m.get("character_name_id")]
+            ship_type_ids = {m["ship_type_id"] for m in members if m.get("ship_type_id")}
+            solar_system_ids = {m["solar_system_id"] for m in members if m.get("solar_system_id")}
+
+            chars = {c.pk: c for c in EveCharacter.objects.filter(pk__in=char_name_ids)}
+            ships = {t.id: t for t in ItemType.objects.filter(id__in=ship_type_ids)}
+            systems = {s.id: s for s in SDESolarSystem.objects.filter(id__in=solar_system_ids)}
 
             from afat.models import Fat, FatLink
 
@@ -66,12 +75,15 @@ class FatEndpoints():
                 hash=get_random_string(length=30)
             )
 
-            for c in models.FleetEvent.objects.filter(fleet=fleet, time=max_date):
+            for m in members:
+                char = chars.get(m.get("character_name_id"))
+                ship = ships.get(m.get("ship_type_id"))
+                system = systems.get(m.get("solar_system_id"))
                 Fat.objects.create(
                     fatlink=fl,
-                    character=c.character_name,
-                    system=c.solar_system.name,
-                    shiptype=c.ship.name,
+                    character=char,
+                    system=system.name if system else str(m.get("solar_system_id", "Unknown")),
+                    shiptype=ship.name if ship else f"Unknown ({m.get('ship_type_id')})",
                 )
 
             return 200, "Created a populated aFat Link!"

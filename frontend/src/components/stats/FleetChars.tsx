@@ -1,58 +1,43 @@
-import { getCatApi } from "../../api/Api";
+import { getFleetCharacterChanges } from "../../api/Methods";
 import { components } from "../../api/CatApi";
+import { useFleetId } from "../../hooks/useFleetId";
 import { useQuery } from "@tanstack/react-query";
 import Card from "react-bootstrap/Card";
-import { useParams } from "react-router-dom";
-
-const getFleetCharacterChanges = async (fleetID: number) => {
-  const { GET } = getCatApi();
-
-  const { data, error } = await GET("/cat/api/fleets/{fleet_id}/character_changes", {
-    params: {
-      path: { fleet_id: fleetID },
-    },
-  });
-  if (error) {
-    console.log(error);
-  } else {
-    console.log(data);
-    return data;
-  }
-};
+import Spinner from "react-bootstrap/Spinner";
 
 const FleetCharacters = () => {
-  const { fleetID } = useParams();
+  const fleetId = useFleetId();
 
-  const { data } = useQuery({
-    queryKey: ["getFleetCharacterChanges", fleetID],
-    queryFn: async () => await getFleetCharacterChanges(fleetID ? +fleetID : 0),
+  const { data, isPending } = useQuery({
+    queryKey: ["getFleetCharacterChanges", fleetId],
+    queryFn: async () => await getFleetCharacterChanges(fleetId),
     refetchInterval: 5000,
   });
 
+  if (isPending) {
+    return <Spinner animation="border" className="m-2" />;
+  }
+
   return (
     <>
-      {data?.map((countList: components["schemas"]["CountResponse"]) => {
-        return (
-          <Card className="m-1 flex-fill" style={{ minWidth: "24em" }}>
-            <Card.Body>
-              <Card.Title>{countList.name}</Card.Title>
-              <hr />
-              {countList.characters?.map((char: components["schemas"]["CharacterCount"]) => {
-                return (
-                  <Card.Text>
-                    <div className="d-flex flex-row justify-content-between">
-                      <span>{char.character.character_name}</span>
-                      <span>
-                        {char.count}/{countList.total}
-                      </span>
-                    </div>
-                  </Card.Text>
-                );
-              })}
-            </Card.Body>
-          </Card>
-        );
-      })}
+      {data?.map((countList: components["schemas"]["CountResponse"]) => (
+        <Card key={countList.name} className="m-1 flex-fill" style={{ minWidth: "24em" }}>
+          <Card.Body>
+            <Card.Title>{countList.name}</Card.Title>
+            <hr />
+            {countList.characters?.map((char: components["schemas"]["CharacterCount"]) => (
+              <Card.Text key={char.character.character_id}>
+                <div className="d-flex flex-row justify-content-between">
+                  <span>{char.character.character_name}</span>
+                  <span>
+                    {char.count}/{countList.total}
+                  </span>
+                </div>
+              </Card.Text>
+            ))}
+          </Card.Body>
+        </Card>
+      ))}
     </>
   );
 };

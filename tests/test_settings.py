@@ -9,7 +9,8 @@ CELERY_ALWAYS_EAGER = True  # Forces celery to run locally for testing
 
 INSTALLED_APPS += [
     'aacat',
-    'routing'
+    'routing',
+    'eve_sde',
 ]
 
 ROOT_URLCONF = 'tests.urls'

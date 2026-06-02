@@ -10,7 +10,8 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, TooltipProps, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, TooltipContentProps, XAxis, YAxis } from "recharts";
+import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -151,9 +152,11 @@ const formatTime = (ms: number) =>
 
 const TOOLTIP_LIMIT = 10;
 
-function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
+function ChartTooltip({ active, payload, label }: TooltipContentProps<ValueType, NameType>) {
   if (!active || !payload?.length) return null;
-  const sorted = [...payload].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+  const sorted = [...payload]
+    .filter((e) => ((e.value as number) ?? 0) > 0)
+    .sort((a, b) => ((b.value as number) ?? 0) - ((a.value as number) ?? 0));
   const visible = sorted.slice(0, TOOLTIP_LIMIT);
   const hidden = sorted.length - visible.length;
   return (
@@ -195,7 +198,7 @@ function TimelineChart({ data, yLabel, title }: { data: FleetStreamData; yLabel:
           tick={{ fill: "currentColor", fontSize: 12 }}
           label={{ value: yLabel, angle: -90, position: "insideLeft", fill: "currentColor", fontSize: 12 }}
         />
-        <Tooltip content={<ChartTooltip />} wrapperStyle={{ zIndex: 1000 }} />
+        <Tooltip content={ChartTooltip} wrapperStyle={{ zIndex: 1000 }} />
         {data.keys.map((key, i) => (
           <Area
             key={key}

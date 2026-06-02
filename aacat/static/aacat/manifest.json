@@ -1,23 +1,58 @@
 {
-  "_@libs-FkNMlZT5.js": {
-    "file": "assets/@libs-FkNMlZT5.js",
-    "name": "@libs",
+  "_@bootstrap-D_p_mkMs.js": {
+    "file": "assets/@bootstrap-D_p_mkMs.js",
+    "name": "@bootstrap",
     "imports": [
-      "_@react-router-u3UBXY8-.js"
+      "_@react-ByBlqLx8.js",
+      "_@react-router-Dl6x5jUw.js",
+      "_@libs-B1tRIloN.js"
     ]
   },
-  "_@react-router-u3UBXY8-.js": {
-    "file": "assets/@react-router-u3UBXY8-.js",
-    "name": "@react-router"
+  "_@libs-B1tRIloN.js": {
+    "file": "assets/@libs-B1tRIloN.js",
+    "name": "@libs",
+    "imports": [
+      "_@react-ByBlqLx8.js"
+    ]
+  },
+  "_@react-ByBlqLx8.js": {
+    "file": "assets/@react-ByBlqLx8.js",
+    "name": "@react"
+  },
+  "_@react-router-Dl6x5jUw.js": {
+    "file": "assets/@react-router-Dl6x5jUw.js",
+    "name": "@react-router",
+    "imports": [
+      "_@react-ByBlqLx8.js"
+    ]
+  },
+  "_@recharts-DQop9qQc.js": {
+    "file": "assets/@recharts-DQop9qQc.js",
+    "name": "@recharts",
+    "imports": [
+      "_@react-ByBlqLx8.js",
+      "_@libs-B1tRIloN.js"
+    ]
+  },
+  "_@tanstack-Db5T4YV8.js": {
+    "file": "assets/@tanstack-Db5T4YV8.js",
+    "name": "@tanstack",
+    "imports": [
+      "_@react-ByBlqLx8.js"
+    ]
   },
   "index.html": {
-    "file": "assets/index-D_D6W3d6.js",
+    "file": "assets/index-CPIfYokZ.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "imports": [
-      "_@libs-FkNMlZT5.js",
-      "_@react-router-u3UBXY8-.js"
+      "_@react-ByBlqLx8.js",
+      "_@react-router-Dl6x5jUw.js",
+      "_@tanstack-Db5T4YV8.js",
+      "_@bootstrap-D_p_mkMs.js",
+      "_@libs-B1tRIloN.js",
+      "_@recharts-DQop9qQc.js"
     ],
     "css": [
       "assets/index-CTDnuxKH.css"

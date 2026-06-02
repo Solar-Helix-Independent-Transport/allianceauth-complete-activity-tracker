@@ -1,17 +1,24 @@
 import ActiveFleetList from "./ActiveFleetList";
 import TrackFleetSearch from "./TrackFleetSearch";
-import { Col } from "react-bootstrap";
+import Card from "react-bootstrap/Card";
+import Col from "react-bootstrap/Col";
+import Row from "react-bootstrap/Row";
 
 const ActiveFleetSelect = () => {
   return (
-    <>
-      <Col>
-        <div className="d-flex justify-content-center align-items-center flex-row flex-wrap">
-          <TrackFleetSearch />
-          <ActiveFleetList />
-        </div>
+    <Row className="m-2 g-3 align-items-start">
+      <Col xs="auto">
+        <TrackFleetSearch />
       </Col>
-    </>
+      <Col>
+        <Card>
+          <Card.Header className="fw-semibold">Active Fleets</Card.Header>
+          <Card.Body className="p-0">
+            <ActiveFleetList />
+          </Card.Body>
+        </Card>
+      </Col>
+    </Row>
   );
 };
 

@@ -166,9 +166,8 @@ class FleetStatsEndpoints():
                     all_names.add(name)
                 snap_counts.append({"time": snap["time"], "counts": named})
 
-            # Rank by total appearances and keep top 10
             totals = {n: sum(s["counts"].get(n, 0) for s in snap_counts) for n in all_names}
-            keys = sorted(all_names, key=lambda k: -totals[k])[:10]
+            keys = sorted(all_names, key=lambda k: -totals[k])
 
             data = [{k: s["counts"].get(k, 0) for k in keys} for s in snap_counts]
 
@@ -178,6 +177,7 @@ class FleetStatsEndpoints():
 
         @api.get(
             "/fleets/{fleet_id}/system_stream",
+
             response={200: dict, **schema.error_responses},
             tags=["Stats"]
         )
@@ -219,7 +219,7 @@ class FleetStatsEndpoints():
                 snap_counts.append({"time": snap["time"], "counts": named})
 
             totals = {n: sum(s["counts"].get(n, 0) for s in snap_counts) for n in all_names}
-            keys = sorted(all_names, key=lambda k: -totals[k])[:10]
+            keys = sorted(all_names, key=lambda k: -totals[k])
 
             data = [{k: s["counts"].get(k, 0) for k in keys} for s in snap_counts]
             times = [s["time"] for s in snap_counts]

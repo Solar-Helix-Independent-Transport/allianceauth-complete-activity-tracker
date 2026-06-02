@@ -2,7 +2,7 @@ import { getCatApi } from "../../api/Api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Button from "react-bootstrap/Button";
 
-const CloseFleetButton = ({ fleet_id }: { fleet_id: number }) => {
+const CloseFleetButton = ({ fleet_id, size, className }: { fleet_id: number; size?: "sm" | "lg"; className?: string }) => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -24,7 +24,8 @@ const CloseFleetButton = ({ fleet_id }: { fleet_id: number }) => {
       variant={mutation.isError ? "danger" : "warning"}
       disabled={mutation.isPending || mutation.isSuccess}
       onClick={() => mutation.mutate()}
-      className="w-100 mt-2"
+      size={size}
+      className={className}
     >
       {mutation.isSuccess ? "Stopped Tracking" : mutation.isPending ? "Stopping…" : "Stop Tracking Fleet"}
     </Button>

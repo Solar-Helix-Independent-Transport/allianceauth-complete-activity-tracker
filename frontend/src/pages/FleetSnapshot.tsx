@@ -10,7 +10,7 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, TooltipProps, XAxis, YAxis } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -124,6 +124,16 @@ const columns = [
     id: "system",
     header: "System",
   }),
+  columnHelper.accessor((r) => r.distance ?? -2, {
+    id: "distance",
+    header: "Distance to FC",
+    cell: ({ getValue }) => {
+      const d = getValue();
+      if (d < 0) return <span className="text-muted">—</span>;
+      return <span>{d}j</span>;
+    },
+    sortingFn: "basic",
+  }),
 ];
 
 // D3 Spectral 10 palette
@@ -138,6 +148,26 @@ const formatTime = (ms: number) =>
     minute: "2-digit",
     hour12: false,
   });
+
+const TOOLTIP_LIMIT = 10;
+
+function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  if (!active || !payload?.length) return null;
+  const sorted = [...payload].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+  const visible = sorted.slice(0, TOOLTIP_LIMIT);
+  const hidden = sorted.length - visible.length;
+  return (
+    <div style={{ background: "rgba(0,0,0,0.8)", border: "none", borderRadius: 4, color: "#fff", padding: "8px 12px", fontSize: 12 }}>
+      <p style={{ color: "#ccc", marginBottom: 4 }}>{formatTime(label as number)}</p>
+      {visible.map((entry) => (
+        <p key={entry.name} style={{ color: entry.color, margin: "2px 0" }}>
+          {entry.name}: {entry.value}
+        </p>
+      ))}
+      {hidden > 0 && <p style={{ color: "#aaa", margin: "4px 0 0" }}>+{hidden} more</p>}
+    </div>
+  );
+}
 
 function TimelineChart({ data, yLabel, title }: { data: FleetStreamData; yLabel: string; title: string }) {
   const chartData = data.data.map((point, i) => ({
@@ -165,12 +195,7 @@ function TimelineChart({ data, yLabel, title }: { data: FleetStreamData; yLabel:
           tick={{ fill: "currentColor", fontSize: 12 }}
           label={{ value: yLabel, angle: -90, position: "insideLeft", fill: "currentColor", fontSize: 12 }}
         />
-        <Tooltip
-          labelFormatter={(t) => formatTime(t as number)}
-          contentStyle={{ background: "rgba(0,0,0,0.8)", border: "none", borderRadius: 4, color: "#fff" }}
-          labelStyle={{ color: "#ccc", marginBottom: 4 }}
-          itemStyle={{ color: "#fff" }}
-        />
+        <Tooltip content={<ChartTooltip />} wrapperStyle={{ zIndex: 1000 }} />
         {data.keys.map((key, i) => (
           <Area
             key={key}

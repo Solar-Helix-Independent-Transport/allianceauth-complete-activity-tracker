@@ -74,28 +74,3 @@ class Fleet(models.Model):
         default_permissions = ()
 
 
-class FleetEvent(models.Model):
-    """
-    Legacy per-row snapshot records. Migrated to Fleet.snapshots by 0007_use_eve_sde.
-    """
-    time = models.DateTimeField()
-    fleet = models.ForeignKey(Fleet, on_delete=models.CASCADE)
-
-    character_id = models.BigIntegerField()
-    character_name = models.ForeignKey(
-        EveCharacter, null=True, on_delete=models.SET_NULL)
-
-    join_time = models.DateTimeField()
-
-    ship_type_id = models.IntegerField()
-    station_id = models.BigIntegerField(null=True, default=None)
-
-    role = models.CharField(max_length=25)
-    squad_id = models.BigIntegerField()
-    wing_id = models.BigIntegerField(null=True, default=None)
-    takes_fleet_warp = models.BooleanField(default=False)
-    distance_from_fc = models.IntegerField(default=-2)
-
-    class Meta:
-        default_permissions = ()
-

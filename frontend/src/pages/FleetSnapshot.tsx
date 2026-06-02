@@ -190,11 +190,11 @@ function TimelineChart({ data, yLabel, title }: { data: FleetStreamData; yLabel:
   );
 }
 
-function FleetShipChart({ fleetId }: { fleetId: number }) {
+function FleetShipChart({ fleetId, refetchInterval }: { fleetId: number; refetchInterval: number | false }) {
   const { data, isPending, error } = useQuery({
     queryKey: ["getFleetStream", fleetId],
     queryFn: () => getFleetStream(fleetId),
-    staleTime: Infinity,
+    refetchInterval,
   });
   if (isPending) return <Spinner animation="border" className="m-3" />;
   if (error) return <p className="text-danger m-3">Failed to load ship timeline.</p>;
@@ -202,11 +202,11 @@ function FleetShipChart({ fleetId }: { fleetId: number }) {
   return <TimelineChart data={data} yLabel="Ships" title="Ship Composition" />;
 }
 
-function FleetSystemChart({ fleetId }: { fleetId: number }) {
+function FleetSystemChart({ fleetId, refetchInterval }: { fleetId: number; refetchInterval: number | false }) {
   const { data, isPending, error } = useQuery({
     queryKey: ["getFleetSystemStream", fleetId],
     queryFn: () => getFleetSystemStream(fleetId),
-    staleTime: Infinity,
+    refetchInterval,
   });
   if (isPending) return <Spinner animation="border" className="m-3" />;
   if (error) return <p className="text-danger m-3">Failed to load system timeline.</p>;
@@ -244,10 +244,10 @@ const FleetSnapshot = () => {
   return (
     <>
       <div className="mx-1 mt-1">
-        <FleetShipChart fleetId={fleetId} />
+        <FleetShipChart fleetId={fleetId} refetchInterval={isActive ? 30_000 : false} />
       </div>
       <div className="mx-1 mt-1">
-        <FleetSystemChart fleetId={fleetId} />
+        <FleetSystemChart fleetId={fleetId} refetchInterval={isActive ? 30_000 : false} />
       </div>
 
       <Card className="m-1">

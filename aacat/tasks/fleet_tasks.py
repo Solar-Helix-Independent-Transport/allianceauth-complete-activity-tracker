@@ -3,66 +3,135 @@ import logging
 import time
 from datetime import timedelta
 
+from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.services.tasks import QueueOnce
 from celery import shared_task
 from celery_once import AlreadyQueued
-from django.contrib.auth.models import Permission, User
 from django.core.cache import cache
-from django.db.models import Q
 from django.utils import timezone
-from esi.exceptions import HTTPClientError, HTTPNotModified, HTTPServerError
+from esi.exceptions import (
+    ESIBucketLimitException, ESIErrorLimitException, HTTPClientError,
+    HTTPNotModified, HTTPServerError,
+)
 from esi.models import Token
 from networkx import NetworkXNoPath
 from routing.edges import include_corptools_jumpbridges
 from routing.routing import route_length
 
-from .. import providers
-from ..models import Fleet
+from .. import app_settings, providers
+from ..models import CATConfiguration, Fleet
 
 logger = logging.getLogger(__name__)
 
+MONITORING_SCOPES = ['esi-location.read_online.v1', 'esi-fleets.read_fleet.v1']
 
-def get_permission_object(permission_str):
-    app_label, codename = permission_str.split('.')
-    return Permission.objects.filter(content_type__app_label=app_label, codename=codename).first()
+# Fleet lookups are cached by ESI for 60s, so spread each tick across that window.
+FLEET_CHECK_SPREAD_SECONDS = 60
+
+# Failures a polling task can safely ignore, as the next tick tries again.
+ESI_POLLING_ERRORS = (
+    HTTPServerError,
+    OSError,
+    ESIBucketLimitException,
+    ESIErrorLimitException,
+)
 
 
-def get_users_with_permission(permission_str, include_su=True):
-    permission_obj = get_permission_object(permission_str)
-    q = Q(groups__permissions=permission_obj) | Q(
-        user_permissions=permission_obj)
-    if include_su:
-        q |= Q(is_superuser=True)
-    return User.objects.filter(q).distinct()
+def _online_cache_key(character_id):
+    return f"aacat:online:{character_id}"
+
+
+def get_monitored_character_ids():
+    """
+        Every known character of every user in a monitored group, that has the tokens we need.
+    """
+    config = CATConfiguration.get_solo()
+    if not config.enable_monitoring_mode:
+        return []
+
+    character_ids = CharacterOwnership.objects.filter(
+        user__groups__in=config.monitor_groups.all()
+    ).values_list("character__character_id", flat=True)
+
+    return sorted(set(
+        Token.objects.filter(
+            character_id__in=character_ids
+        ).require_scopes(MONITORING_SCOPES).values_list("character_id", flat=True)
+    ))
 
 
 @shared_task(bind=True, base=QueueOnce, max_retries=3)
 def check_all_watched_characters(self):
-    users = get_users_with_permission("aacat.monitor_us")
-    for u in users:
-        for c in u.character_ownerships.all():
-            check_character_online.delay(character_id=c.character.character_id)
+    """
+        Slow tick: find out who is online, spread evenly over the check interval.
+    """
+    interval = app_settings.AACAT_ONLINE_CHECK_SECONDS
+    for character_id in get_monitored_character_ids():
+        check_character_online.apply_async(
+            args=[character_id],
+            countdown=character_id % interval,
+        )
+
+
+@shared_task(bind=True, base=QueueOnce, max_retries=3)
+def check_online_watched_fleets(self):
+    """
+        Fast tick: check for new fleets, only on characters last seen online.
+    """
+    character_ids = get_monitored_character_ids()
+    online = cache.get_many([_online_cache_key(c) for c in character_ids])
+    tracked_bosses = set(
+        Fleet.objects.filter(
+            end_time__isnull=True,
+            boss__character_id__in=character_ids,
+        ).values_list("boss__character_id", flat=True)
+    )
+    for character_id in character_ids:
+        if _online_cache_key(character_id) in online and character_id not in tracked_bosses:
+            check_character_fleet.apply_async(
+                args=[character_id],
+                countdown=character_id % FLEET_CHECK_SPREAD_SECONDS,
+            )
 
 
 @shared_task(bind=True, base=QueueOnce, max_retries=3)
 def check_character_online(self, character_id):
     token = Token.get_token(character_id, ['esi-location.read_online.v1'])
-    online_status = providers.esi.client.Location.GetCharactersCharacterIdOnline(
-        character_id=character_id,
-        token=token
-    ).result(use_etag=False)
+    if not token:
+        logger.warning(f"No online token for {character_id}, skipping")
+        cache.delete(_online_cache_key(character_id))
+        return
+
+    try:
+        online_status = providers.esi.client.Location.GetCharactersCharacterIdOnline(
+            character_id=character_id,
+            token=token
+        ).result(use_etag=False)
+    except (HTTPClientError, *ESI_POLLING_ERRORS) as e:
+        logger.warning(f"Online check failed for {token.character_name}: {e.__class__.__name__} {e}")
+        return
+
     if online_status.online:
-        logger.info(F"HEY!!!! I'm online! {token.character_name}")
+        logger.debug(f"{token.character_name} is online")
+        cache.set(
+            _online_cache_key(character_id),
+            True,
+            # Must outlive the gap between checks, or the character drops out of the fast tick.
+            timeout=app_settings.AACAT_ONLINE_CHECK_SECONDS + 120,
+        )
         check_character_fleet.delay(character_id)
     else:
-        logger.info(F"OFFLINE! {token.character_name}")
+        logger.debug(f"{token.character_name} is offline")
+        cache.delete(_online_cache_key(character_id))
 
 
 @shared_task(bind=True, base=QueueOnce, max_retries=3)
 def check_character_fleet(self, character_id):
     token = Token.get_token(character_id, ['esi-fleets.read_fleet.v1'])
-    logger.info(F"{token.character_name} checking fleets")
+    if not token:
+        logger.warning(f"No fleet token for {character_id}, skipping")
+        return
 
     try:
         fleet_details = providers.esi.client.Fleets.GetCharactersCharacterIdFleet(
@@ -70,31 +139,43 @@ def check_character_fleet(self, character_id):
             token=token
         ).result(use_etag=False)
     except HTTPClientError as e:
-        print(e)
+        if e.status_code == 404:
+            logger.debug(f"{token.character_name} is not in a fleet")
+        else:
+            logger.error(f"HTTPClientError {e.status_code} checking fleet of {token.character_name}")
+        return
+    except ESI_POLLING_ERRORS as e:
+        logger.warning(f"Fleet check failed for {token.character_name}: {e.__class__.__name__} {e}")
+        return
 
-    logger.info(
-        f"{token.character_name} in the the fleet {fleet_details.fleet_id}")
-
-    fleet_characters = providers.esi.client.Fleets.GetFleetsFleetIdMembers(
-        fleet_id=fleet_details.fleet_id,
-        token=token
-    ).result(use_etag=False)
-
-    logger.info(
-        f"{token.character_name} the boss of the fleet {fleet_details.fleet_id}")
+    if fleet_details.fleet_boss_id != character_id:
+        logger.debug(f"{token.character_name} is not the boss of fleet {fleet_details.fleet_id}")
+        return
 
     char = EveCharacter.objects.get(character_id=character_id)
-    fleet, created = Fleet.objects.get_or_create(
-        boss=char,
-        eve_fleet_id=fleet_details.fleet_id,
-        defaults={'start_time': timezone.now(),
-                  "name": f"{char}'s Fleet",
-                  "fc": char}
-    )
-    if not created:
-        if fleet.end_time:
-            fleet.end_time = None
-            fleet.save()
+    # A fleet is one row for its whole life, even when boss is passed to someone else.
+    fleet = Fleet.objects.filter(
+        eve_fleet_id=fleet_details.fleet_id).order_by("-pk").first()
+
+    if fleet is None:
+        logger.info(f"Tracking new fleet {fleet_details.fleet_id} for {token.character_name}")
+        Fleet.objects.create(
+            boss=char,
+            eve_fleet_id=fleet_details.fleet_id,
+            start_time=timezone.now(),
+            name=f"{char}'s Fleet",
+            fc=char,
+        )
+    elif fleet.boss_id == char.pk and not fleet.end_time:
+        # Starting another snapshot here could leave two loops on one fleet.
+        # A stalled loop is recovered by bootstrap_stale_fleets.
+        logger.debug(f"Fleet {fleet_details.fleet_id} is already tracked")
+        return
+    else:
+        logger.info(f"Resuming fleet {fleet_details.fleet_id} for {token.character_name}")
+        fleet.boss = char
+        fleet.end_time = None
+        fleet.save(update_fields=["boss", "end_time", "last_update"])
 
     snapshot_fleet.apply_async(
         args=[
@@ -124,8 +205,13 @@ def bootstrap_snapshot_fleet(self, character_id, fleet_id):
 def snapshot_fleet(self, character_id, fleet_id):
     _timer = [time.perf_counter()]
     token = Token.get_token(character_id, ['esi-fleets.read_fleet.v1'])
-    fleet = Fleet.objects.get(
-        boss__character_id=character_id, eve_fleet_id=fleet_id)
+    try:
+        fleet = Fleet.objects.get(
+            boss__character_id=character_id, eve_fleet_id=fleet_id)
+    except Fleet.DoesNotExist:
+        # Boss was handed over, the new boss has their own snapshot loop.
+        logger.info(f"{character_id} is no longer boss of fleet {fleet_id}, stopping")
+        return
 
     _timer.append(f"1: {time.perf_counter()-_timer[0]}")
 
@@ -167,7 +253,7 @@ def snapshot_fleet(self, character_id, fleet_id):
         for cid in char_ids:
             logger.info(f"Creating new character {cid}")
             c = EveCharacter.objects.create_character(cid)
-            chars[c.pk] = c.character_id
+            chars[c.character_id] = c.pk
         _timer.append(f"5: {time.perf_counter()-_timer[0]}")
 
         extra_edges = []
@@ -216,6 +302,8 @@ def snapshot_fleet(self, character_id, fleet_id):
         fleet.save()
     except HTTPNotModified:
         logger.debug(f"No fleet changes (304) for {fleet_id}, skipping snapshot")
+        # The loop is healthy, so don't let a quiet fleet look stale to bootstrap_stale_fleets.
+        fleet.save(update_fields=["last_update"])
     except HTTPClientError as e:
         if e.status_code == 404:
             logger.info(f"Fleet {fleet_id} not found (404), closing.")

@@ -20,7 +20,6 @@ class CATConfiguration(SingletonModel):
         verbose_name = "aaCAT Configuration"
         default_permissions = ()
         permissions = (
-            ('monitor_us', 'CAT Fleet Auto Monitoring for ALL fleets run by these users'),
             ('create_fleets', 'Can Create new CAT Fleets'),
             ('view_fleets', 'Can View all active CAT Fleets'),
             ('edit_fleets', 'Can Edit all active CAT Fleets'),
